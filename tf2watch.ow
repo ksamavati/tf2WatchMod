@@ -1,0 +1,5332 @@
+variables
+{
+	global:
+		5: AmmoSpawnLocations
+		6: AmmoSpawnEffects
+		8: CurrentIndex
+		9: AmmoBoxColor
+
+	player:
+		0: BurnSource
+		1: Cloaked
+		2: Ubercharged
+		3: HealTarget
+		4: OriginalMaxHealth
+		5: OverhealMaxPool
+		7: BeingHealed
+		8: NumOfDoubleJumps
+		9: AllowDoubleJump
+		10: MercyHealOverTimeID
+		11: OverhealPool
+		12: HealTargetHealOverTimeID
+		13: UberchargeEffectArray
+		14: StickyOrFlaregunEquipped
+		15: EquippedWeaponHUDText
+		16: BombDestination
+		17: BombPosition
+		18: MovingBombEffect
+		19: StuckBombsArray
+		20: Invisible
+		21: InvisEffectArray
+		22: InvisTextArray
+		23: StuckBombLocationsArray
+		24: ClassGuideHUDTextArray
+		25: Index
+		26: Index2
+		27: PlayersInBlastRadiusArray
+		28: DistanceFromBlastScalar
+		29: BuildingEquipped
+		30: BuildingArray
+		31: BuildingLocationsArray
+		32: CurrentBuildSpot
+		34: DispenserBeamEffect
+		35: BuildingLevelArray
+		36: DispenserHealOverTime
+		37: DispenserText
+		39: EngineerMetal
+		40: DispenserCompletion
+		41: LastConstruction
+		42: TeleporterCharge
+		43: SentryCompletion
+		44: TPEntranceCompletion
+		45: TPExitCompletion
+		46: UpgradeProgressArray
+		47: DispenserMetal
+		48: SentryText
+		49: Bot2
+		50: PlayerTeleported
+		51: TPEntranceText
+		52: TPExitText
+		53: BuildingAttackBeam
+		54: TimeSinceLastDamage
+		56: SniperDot
+		57: BuffBannerActive
+		58: BuffBannerEffectsArray
+		60: BuffBannerDamageModID
+		61: SapperDOTID
+		62: SniperChargeOnCooldown
+		63: LastDamageDealt
+		65: SpyCloakFlicker
+		66: MetalSpawnTimers
+		67: BastionDefaultFacing
+		68: MetalSpawnLocations
+		69: MetalSpawnEffects
+		70: FloatingDamageTextbox
+		71: LastDamageTaken
+		72: SentryTarget
+		73: DispenserHP
+		74: OverhealPoolObject
+		75: TimeSinceMercyHealed
+		76: Healer
+		77: BurningEffect
+		78: PositionLocationEffects
+		79: StickyAmmo
+		80: Bot1
+		81: TPEntranceHP
+		82: TPExitHP
+		83: TPUses
+		84: PuppetBot
+		85: PlayerLookingAtSticky
+		86: StickyBeingLookedAt
+		87: SentryRocketCooldown
+		88: AttackStickyBeam
+		89: BotOwner
+		90: BuildingSappedArray
+		91: SapperEffects
+		92: OngoingSFX
+		93: BuildingGhostColor
+		94: TPExitFacing
+		95: TPColor
+		96: TorbEquippedWeapon
+		97: TargetableBySentry
+		98: BuildingRotation
+		99: DisguiseSelection
+		100: Disguised
+		101: ThirdPersonEnabled
+}
+
+subroutines
+{
+	2: InitializeAllSpawns
+	3: DestroyDispenser
+	4: Decloak
+	5: DestroyTPEntrance
+	6: DestroyTPExit
+	7: InitializeSentry
+	8: DestroySentry
+	9: InitializeDispenser
+	10: InitializeTPEntrance
+	11: InitializeTPExit
+	12: SwitchToWeapons
+}
+
+disabled rule("Display server performance characteristics - DEBUG")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create HUD Text(Host Player, String("{0}: {1}", String("Server Load"), String("{0}%", Server Load)), Null, Null, Right, 0, Color(
+			White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Host Player, String("{0}: {1}", String("Server Load Average"), String("{0}%", Server Load Average)), Null, Null,
+			Right, 1, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Host Player, String("{0}: {1}", String("Server Load Peak"), String("{0}%", Server Load Peak)), Null, Null, Right,
+			2, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+	}
+}
+
+rule("Hero Selection time (4s for DEBUG) -------------------------------INITIALIZATION-----------------------------")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Set Match Time(4);
+	}
+}
+
+rule("Setup Time (5s for DEBUG/60s normal)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is In Setup == True;
+	}
+
+	actions
+	{
+		disabled Set Match Time(60);
+		Set Match Time(5);
+	}
+}
+
+rule("Round timer (1h for DEBUG, default normal)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Game In Progress == True;
+	}
+
+	actions
+	{
+		Set Match Time(3599);
+	}
+}
+
+rule("Third Person Camera (DEBUG)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Start Camera(Event Player, Eye Position(Event Player) + World Vector Of(Vector(1, 0, -1.500), Event Player, Rotation),
+			Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player) * 1000,
+			All Players(All Teams), Event Player, True), 22);
+	}
+}
+
+rule("Press F to spawn Enemy Dummy Bot (DEBUG)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+	}
+
+	actions
+	{
+		"Specific Hero"
+		disabled Create Dummy Bot(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player)), -1, Ray Cast Hit Position(Eye Position(Event Player),
+			Eye Position(Event Player) + Facing Direction Of(Event Player) * 10, All Players(All Teams), Event Player, True),
+			Facing Direction Of(Event Player) * Vector(-1, -1, -1));
+		"Random Hero"
+		Create Dummy Bot(Random Value In Array(Allowed Heroes(Event Player)), Opposite Team Of(Team Of(Event Player)), -1,
+			Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player) * 10,
+			All Players(All Teams), Event Player, True), Facing Direction Of(Event Player) * Vector(-1, -1, -1));
+		Event Player.PuppetBot = Last Created Entity;
+		"Create red circles at Position and Eye Position"
+		disabled Create Effect(All Players(All Teams), Sphere, Color(Red), Last Of(All Players(Opposite Team Of(Team Of(Event Player)))), 0.500,
+			Position and Radius);
+		disabled Modify Player Variable(Event Player, PositionLocationEffects, Append To Array, Last Created Entity);
+		disabled Create Effect(All Players(All Teams), Sphere, Color(Red), Eye Position(Last Of(All Players(Opposite Team Of(Team Of(
+			Event Player))))), 0.500, Position and Radius);
+		disabled Modify Player Variable(Event Player, PositionLocationEffects, Append To Array, Last Created Entity);
+	}
+}
+
+rule("Bot presses E when player presses E")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 2)) == True;
+	}
+
+	actions
+	{
+		Start Holding Button(Event Player.PuppetBot, Button(Ability 2));
+		Wait Until(!Is Button Held(Event Player, Button(Ability 2)), 99999);
+		Stop Holding Button(Event Player.PuppetBot, Button(Ability 2));
+	}
+}
+
+rule("Bot presses Shift when player presses Shift")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+	}
+
+	actions
+	{
+		Start Holding Button(Event Player.PuppetBot, Button(Ability 1));
+		Wait Until(!Is Button Held(Event Player, Button(Ability 1)), 99999);
+		Stop Holding Button(Event Player.PuppetBot, Button(Ability 1));
+	}
+}
+
+rule("Bot fires when player fires (DEBUG)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+	}
+
+	actions
+	{
+		Start Holding Button(Event Player.PuppetBot, Button(Primary Fire));
+		Wait Until(!Is Button Held(Event Player, Button(Primary Fire)), 99999);
+		Stop Holding Button(Event Player.PuppetBot, Button(Primary Fire));
+	}
+}
+
+disabled rule("Bot altfires when player altfires (DEBUG)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Secondary Fire)) == True;
+	}
+
+	actions
+	{
+		Press Button(Player Closest To Reticle(Event Player, All Teams), Button(Secondary Fire));
+	}
+}
+
+disabled rule("Bot ults when player ults (DEBUG)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ultimate)) == True;
+	}
+
+	actions
+	{
+		Start Holding Button(Event Player.PuppetBot, Button(Ultimate));
+		Wait Until(!Is Button Held(Event Player, Button(Ultimate)), 99999);
+		Stop Holding Button(Event Player.PuppetBot, Button(Ultimate));
+	}
+}
+
+disabled rule("Press E for SOUND TEST (DEBUG)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 2)) == True;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+		Global.A = Payload Progress Percentage;
+	}
+}
+
+rule("Remove bot on death (DEBUG)")
+{
+	event
+	{
+		Player Died;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Dummy Bot(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(5, Ignore Condition);
+		Destroy Dummy Bot(Team Of(Event Player), Slot Of(Event Player));
+	}
+}
+
+rule("Voiceline to spawn friendly bot (DEBUG)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating Any Voice line(Event Player) == True;
+	}
+
+	actions
+	{
+		Create Dummy Bot(Hero(Mercy), Team Of(Event Player), -1, Ray Cast Hit Position(Eye Position(Event Player), Facing Direction Of(
+			Event Player) * 1000, All Players(All Teams), Event Player, True), Vector(-1 * X Component Of(Facing Direction Of(
+			Event Player)), 0, -1 * Z Component Of(Facing Direction Of(Event Player))));
+	}
+}
+
+rule("Press Voice Line to make bot fire - DEBUG")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		"Voice line pressed"
+		Is Communicating Any Voice line(Event Player) == True;
+		"Player closest to reticule is bot"
+		Is Dummy Bot(Player Closest To Reticle(Event Player, Opposite Team Of(Team Of(Event Player)))) == True;
+	}
+
+	actions
+	{
+		disabled Press Button(Player Closest To Reticle(Event Player, All Teams), Button(Secondary Fire));
+		"Toggle hold LMB (using NumOfDoubleJumps as a flag for toggle)"
+		If(!Event Player.NumOfDoubleJumps);
+			Start Holding Button(Player Closest To Reticle(Event Player, Opposite Team Of(Team Of(Event Player))), Button(Primary Fire));
+			Event Player.NumOfDoubleJumps = True;
+		Else;
+			Stop Holding Button(Player Closest To Reticle(Event Player, Opposite Team Of(Team Of(Event Player))), Button(Primary Fire));
+			Event Player.NumOfDoubleJumps = False;
+		End;
+	}
+}
+
+disabled rule("Press shift to deal 299 damage to bot - DEBUG")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mercy;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+	}
+
+	actions
+	{
+		Damage(Players On Hero(Hero(D.Va), All Teams), Null, 299);
+	}
+}
+
+disabled rule("Press Shift to deal 124 damage to self - DEBUG")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+	}
+
+	actions
+	{
+		Damage(Event Player, Null, 124);
+	}
+}
+
+rule("Initialize Player (One-time inititalization)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		Chase Player Variable At Rate(Event Player, TimeSinceLastDamage, 10, 1, None);
+		Disallow Button(Event Player, Button(Ultimate));
+		Set Max Health(Event Player, 1);
+	}
+}
+
+rule("Initialize All Hero Swaps (subroutine) (Runs every time player spawns as any hero)")
+{
+	event
+	{
+		Subroutine;
+		InitializeAllSpawns;
+	}
+
+	actions
+	{
+		Remove All Health Pools From Player(Event Player);
+		"Reset all default settings"
+		Set Primary Fire Enabled(Event Player, True);
+		Set Secondary Fire Enabled(Event Player, True);
+		Set Ultimate Ability Enabled(Event Player, False);
+		Set Damage Dealt(Event Player, 100);
+		Set Projectile Speed(Event Player, 100);
+		Stop All Heal Over Time(Event Player);
+		Stop All Damage Over Time(Event Player);
+		"Set default player variables"
+		Event Player.TimeSinceLastDamage = 10;
+		Event Player.OverhealPool = 0;
+		Event Player.OriginalMaxHealth = Max Health(Event Player);
+		Event Player.OverhealMaxPool = Max Health(Event Player) * 0.500;
+		"Clear Existing HUD text"
+		For Player Variable(Event Player, Index, 0, Count Of(Event Player.ClassGuideHUDTextArray), 1);
+			Destroy HUD Text(Event Player.ClassGuideHUDTextArray[Event Player.Index]);
+		End;
+		Destroy HUD Text(Event Player.EquippedWeaponHUDText[0]);
+		Destroy HUD Text(Event Player.EquippedWeaponHUDText[1]);
+		Event Player.ClassGuideHUDTextArray = Null;
+		Allow Button(Event Player, Button(Primary Fire));
+		Allow Button(Event Player, Button(Secondary Fire));
+		Disallow Button(Event Player, Button(Ultimate));
+		Event Player.BeingHealed = False;
+		Set Healing Dealt(Event Player, 100);
+		Set Reload Enabled(Event Player, True);
+		If(Hero Of(Event Player) != Hero(Torbjörn));
+			"Clear any ghost effects"
+			Destroy Effect(Event Player.BuildingArray[0]);
+			Destroy Effect(Event Player.BuildingArray[5]);
+		End;
+		If(Hero Of(Event Player) != Hero(Torbjörn) && Event Player.BuildingLocationsArray != Null);
+			Call Subroutine(DestroySentry);
+			Call Subroutine(DestroyDispenser);
+			Call Subroutine(DestroyTPEntrance);
+			Call Subroutine(DestroyTPExit);
+		End;
+		Add Health Pool To Player(Event Player, Shields, Event Player.OverhealPool, True, True);
+		Event Player.OverhealPoolObject = Last Created Health Pool;
+		Set Max Health(Event Player, 0);
+		Set Projectile Gravity(Event Player, 100);
+		Event Player.TargetableBySentry = True;
+		Set Move Speed(Event Player, 100);
+	}
+}
+
+rule("Reset TimeSinceLastDamage on damage")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Event Player.TimeSinceLastDamage = 0;
+	}
+}
+
+rule("Initialize Soldier (Pharah)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	actions
+	{
+		Call Subroutine(InitializeAllSpawns);
+		Set Ultimate Ability Enabled(Event Player, True);
+		Set Damage Dealt(Event Player, 83.333);
+		"Big Text / Medium Text"
+		Create HUD Text(Event Player, Custom String("Soldier"), Null, Custom String(""), Left, 1, Color(White), Color(White), Color(White),
+			None, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		"Medium Text"
+		Create HUD Text(Event Player, Null, Null, Custom String("Aim a rocket at your feet and jump to perform a rocket jump"), Left, 2,
+			Color(White), Color(White), Color(White), None, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		"Small Text"
+		Create HUD Text(Event Player, Null, Null, Custom String("Damage enemies to charge your Buff Banner, Q to activate"), Left, 3,
+			Color(White), Color(White), Color(White), None, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		"Small Text"
+		Create HUD Text(Event Player, Null, Null, Custom String("While active, you and your allies will deal minicrits for 10 seconds"),
+			Left, 4, Color(White), Color(White), Color(White), Visible To Sort Order and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Null, Left, 5, Color(White), Color(White), Color(White), None, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Set Reload Enabled(Event Player, False);
+		Add Health Pool To Player(Event Player, Health, 197, True, False);
+		Event Player.OverhealMaxPool = 101;
+	}
+}
+
+rule("Initialize Pyro (Mei)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mei;
+	}
+
+	actions
+	{
+		Call Subroutine(InitializeAllSpawns);
+		Set Projectile Speed(Event Player, 75);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Set Damage Dealt(Event Player, 150);
+		Event Player.EquippedWeaponHUDText = Custom String("Flamethrower");
+		Create HUD Text(Event Player, Event Player.EquippedWeaponHUDText, Null, Custom String("(E) >"), Top, 1, Color(Red), Color(White),
+			Color(White), String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String("Pyro"), Custom String(""), Custom String(""), Left, 1, Color(White), Color(White),
+			Color(White), None, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Custom String(""), Custom String("Attacks burn enemies over time"), Left, 2, Color(White),
+			Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String("RMB to airblast enemies away and extinguish teammates"), Left, 3, Color(
+			White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Custom String(""), Custom String("E to switch to Flare Gun"), Left, 4, Color(White), Color(
+			White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Custom String(""), Custom String("Flare Gun will crit against burning enemies."), Left, 5,
+			Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Null, Left, 10, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Add Health Pool To Player(Event Player, Health, 172, True, False);
+		Event Player.OverhealMaxPool = 88.500;
+		Set Secondary Fire Enabled(Event Player, False);
+	}
+}
+
+rule("Initialize Scout (Reaper) - Set Number of doublejumps to 1/No passive self-heal")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reaper;
+	}
+
+	actions
+	{
+		Call Subroutine(InitializeAllSpawns);
+		"Disable passive heal"
+		Set Healing Dealt(Event Player, 0);
+		Event Player.NumOfDoubleJumps = 1;
+		"Clear Existing HUD text"
+		For Player Variable(Event Player, Index, 0, Count Of(Event Player.ClassGuideHUDTextArray), 1);
+			Destroy HUD Text(Event Player.ClassGuideHUDTextArray[Event Player.Index]);
+		End;
+		Event Player.ClassGuideHUDTextArray = Null;
+		Create HUD Text(Event Player, Custom String("Scout"), Custom String(""), Custom String(""), Left, 0, Color(White), Color(White),
+			Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Go fast"), Left, 1, Color(White), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String("Double-jump"), Left, 2, Color(White), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String("Shotgun auto-reloads, one shell at a time"), Left, 3, Color(White), Color(
+			White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Set Projectile Speed(Event Player, 100);
+		Create HUD Text(Event Player, Null, Null, Custom String("Capture speed doubled"), Left, 3, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Set Primary Fire Enabled(Event Player, True);
+		Set Ultimate Ability Enabled(Event Player, False);
+		Event Player.OriginalMaxHealth = Max Health(Event Player);
+		Event Player.OverhealMaxPool = Max Health(Event Player) * 1.500;
+		Set Reload Enabled(Event Player, False);
+		Add Health Pool To Player(Event Player, Health, 122, True, False);
+		Event Player.OverhealMaxPool = 63.500;
+		If(Is Dummy Bot(Event Player));
+			Set Move Speed(Event Player, 76.571);
+		End;
+	}
+}
+
+rule("Initialize Heavy (D.Va)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	actions
+	{
+		Call Subroutine(InitializeAllSpawns);
+		"Disable Barrier"
+		Set Secondary Fire Enabled(Event Player, False);
+		Set Ultimate Ability Enabled(Event Player, True);
+		Create HUD Text(Event Player, Custom String("Heavy"), Custom String(""), Custom String(""), Left, 1, Color(White), Color(White),
+			Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Hold right mouse to spin up your minigun"), Left, 2, Color(
+			White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Press Q to eat your sandvich for full HP recovery"), Left, 3,
+			Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("You have the highest health and firepower of any class"),
+			Left, 4, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String(
+			"but you are also the slowest and your minigun takes time to spin up"), Left, 5, Color(White), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Null, Left, 10, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Add Health Pool To Player(Event Player, Health, 293, True, False);
+		Event Player.OverhealMaxPool = 151;
+		Set Primary Fire Enabled(Event Player, False);
+	}
+}
+
+rule("Initialize Demoman (Junkrat)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Junkrat;
+	}
+
+	actions
+	{
+		Call Subroutine(InitializeAllSpawns);
+		Event Player.OriginalMaxHealth = Max Health(Event Player);
+		Event Player.OverhealMaxPool = Max Health(Event Player) * 1.500;
+		Create HUD Text(Event Player, Custom String("PIPEBOMB LAUNCHER"), Null, Custom String("(E) Switch"), Top, 1, Color(Blue), Color(
+			White), Color(White), Visible To and String, Default Visibility);
+		Event Player.ClassGuideHUDTextArray[0] = Last Text ID;
+		Create HUD Text(Event Player, Custom String("{0} / 8", Event Player.StickyAmmo), Custom String("Sticky Ammo"), Null, Right, 2,
+			Color(Blue), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Event Player.StickyOrFlaregunEquipped = False;
+		Event Player.BombDestination = 1;
+		Set Damage Dealt(Event Player, 83.400);
+		Create HUD Text(Event Player, Custom String("Demoman"), Custom String(""), Custom String(""), Left, 1, Color(White), Color(White),
+			Color(White), String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("E to toggle Stickybomb Launcher"), Left, 2, Color(White),
+			Color(White), Color(White), String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Right-click to detonate stickybombs"), Left, 3, Color(White),
+			Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Sticky-jump by detonating stickybomb beneath you"), Left, 4,
+			Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Null, Left, 10, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Set Reload Enabled(Event Player, False);
+		Add Health Pool To Player(Event Player, Health, 172, True, False);
+		Event Player.OverhealMaxPool = 89;
+		Event Player.StickyAmmo = 8;
+	}
+}
+
+rule("Initialize Engineer (Torbjorn)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	actions
+	{
+		"Prevent another player from selecting torb"
+		disabled Set Player Allowed Heroes(Remove From Array(All Players(Team Of(Event Player)), Event Player), Remove From Array(Allowed Heroes(
+			Event Player), Hero(Torbjörn)));
+		Call Subroutine(InitializeAllSpawns);
+		Set Projectile Gravity(Event Player, 0);
+		Event Player.EngineerMetal = 200;
+		"DEBUG: Metal regen"
+		Chase Player Variable At Rate(Event Player, EngineerMetal, 200, 3, None);
+		Event Player.BuildingEquipped = Custom String("None");
+		Create HUD Text(Event Player, Event Player.BuildingEquipped, Null, Custom String("(E) >"), Top, 1, Color(Orange), Color(White),
+			Color(White), String, Default Visibility);
+		Event Player.EquippedWeaponHUDText = Last Text ID;
+		Create HUD Text(Event Player, Custom String("Metal: {0}", Round To Integer(Event Player.EngineerMetal, Up)), Null, Null, Top, 2,
+			Color(Green), Color(White), Color(White), Visible To and String, Default Visibility);
+		Event Player.EquippedWeaponHUDText[1] = Last Text ID;
+		Set Damage Dealt(Event Player, 82);
+		disabled Event Player.BuildingEquipped = 0;
+		Event Player.CurrentBuildSpot = Ray Cast Hit Position(Eye Position(Event Player), Vector(X Component Of(Eye Position(Event Player)
+			+ Facing Direction Of(Event Player) * 2), Y Component Of(Position Of(Event Player)) + 0.350, Z Component Of(Eye Position(
+			Event Player) + Facing Direction Of(Event Player) * 2)), All Players(All Teams), All Players(All Teams), False);
+		"Class Guide HUD Text"
+		Create HUD Text(Event Player, Custom String("Engineer"), Custom String(""), Custom String(""), Left, 1, Color(White), Color(White),
+			Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Press Q and E to cycle through buildable items"), Left, 2,
+			Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String("Left-click to build (if you have enough metal)"), Left, 3, Color(White),
+			Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String("Press Shift to quickly switch back to your weapons"), Left, 4, Color(
+			White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"Your sentry deals devastating damage in a limited range (Range displayed in red when placing)"), Left, 5, Color(White), Color(
+			White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String("Your dispenser heals nearby allies and generates metal to build with"),
+			Left, 6, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"Your buildings can be healed and upgraded by hitting them with your wrench (costs metal)"), Left, 7, Color(White), Color(
+			White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Null, Left, 10, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Set Max Health(Event Player, 1);
+		Add Health Pool To Player(Event Player, Health, 122, True, False);
+		Event Player.OverhealMaxPool = 63.500;
+		Event Player.BuildingLevelArray[3] = 1;
+		Event Player.Bot1 = Null;
+		Event Player.BuildingGhostColor = Color(Red);
+		Event Player.BuildingRotation = Icon String(Arrow: Up);
+	}
+}
+
+rule("Initialize Medic (Mercy) - Start healing over time")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mercy;
+	}
+
+	actions
+	{
+		Call Subroutine(InitializeAllSpawns);
+		Set Healing Dealt(Event Player, 88);
+		"Enable Ultimate"
+		Set Ultimate Ability Enabled(Event Player, True);
+		Set Secondary Fire Enabled(Event Player, False);
+		Create HUD Text(Event Player, Custom String("MEDIC"), Custom String(""), Custom String(""), Left, 1, Color(White), Color(White),
+			Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Heal your allies to build up your Übercharge"), Left, 2,
+			Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("You can heal your allies up to 150% of their max HP"), Left,
+			3, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Press Q to unleash your Übercharge,"), Left, 4, Color(White),
+			Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("making you and your heal target invulnerable for 8 seconds"),
+			Left, 5, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Null, Left, 10, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Add Health Pool To Player(Event Player, Health, 147, True, False);
+		Event Player.OverhealMaxPool = 76;
+		Set Ultimate Charge(Event Player, 0);
+	}
+}
+
+rule("Initialize Sniper (Widowmaker)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Widowmaker;
+	}
+
+	actions
+	{
+		Call Subroutine(InitializeAllSpawns);
+		"Ult guages sniper charge"
+		Set Ultimate Ability Enabled(Event Player, True);
+		Set Damage Dealt(Event Player, 55);
+		Event Player.OriginalMaxHealth = Max Health(Event Player);
+		Event Player.OverhealMaxPool = Max Health(Event Player) * 1.500;
+		Create HUD Text(Event Player, Custom String("Sniper"), Null, Custom String(""), Left, 1, Color(White), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Your ult guage displays your sniper's charge"), Left, 2,
+			Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Your sniper charges more slowly than Widowmaker's"), Left, 3,
+			Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Enemies can see a small dot at your crosshair's location"),
+			Left, 4, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String(
+			"A fully-charged bodyshot will instantly kill weaker classes"), Left, 5, Color(White), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Null, Left, 10, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Add Health Pool To Player(Event Player, Health, 122, True, False);
+		Event Player.OverhealMaxPool = 64;
+	}
+}
+
+rule("Initialize Spy (Cassidy)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	actions
+	{
+		Call Subroutine(InitializeAllSpawns);
+		Event Player.OriginalMaxHealth = Max Health(Event Player);
+		Event Player.OverhealMaxPool = Max Health(Event Player) * 1.500;
+		Set Ultimate Ability Enabled(Event Player, True);
+		Set Ultimate Charge(Event Player, 100);
+		Disallow Button(Event Player, Button(Ultimate));
+		Set Secondary Fire Enabled(Event Player, False);
+		"Spy Revolver damage scalar = 0.57, Ambassador = 48.45"
+		Set Damage Dealt(Event Player, 48.450);
+		Create HUD Text(Event Player, Custom String("Spy"), Null, Custom String(""), Left, 1, Color(White), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Custom String(""), Null, Custom String("Press Right Mouse Button (or Q) to toggle invisiblity."),
+			Left, 2, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String("Backstab your foes from behind (melee attack) for an instant kill!"),
+			Left, 3, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String("Melee an enemy turret to use your Electro-Sapper and disable it"), Left,
+			4, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Null, Custom String("Moving onto the objective will disable your cloak"), Left, 5, Color(
+			White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Add Health Pool To Player(Event Player, Health, 122, True, False);
+		Event Player.OverhealMaxPool = 63.500;
+		Event Player.TimeSinceLastDamage = 60;
+		Event Player.TargetableBySentry = False;
+		Set Move Speed(Event Player, 107);
+		Event Player.DisguiseSelection = Hero(Reaper);
+		Create HUD Text(Event Player, Hero Icon String(Event Player.DisguiseSelection), Custom String("Disguise (Shift)"), Custom String(
+			"(E) >"), Top, 1, Color(White), Color(White), Color(Yellow), String, Default Visibility);
+		Modify Player Variable(Event Player, ClassGuideHUDTextArray, Append To Array, Last Text ID);
+		Event Player.ThirdPersonEnabled = True;
+	}
+}
+
+rule("Floating Damage Numbers / Sniper damage calculation")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	actions
+	{
+		If(Hero Of(Event Player) == Hero(Widowmaker) && Is Button Held(Event Player, Button(Secondary Fire)));
+			If(Event Was Critical Hit);
+				Event Player.LastDamageDealt = Round To Integer(150 + 3 * Ultimate Charge Percent(Event Player), To Nearest);
+				Damage(Victim, Event Player, Event Player.LastDamageDealt * 100);
+			Else;
+				Event Player.LastDamageDealt = Round To Integer(50 + Ultimate Charge Percent(Event Player), To Nearest);
+				Damage(Victim, Event Player, Event Player.LastDamageDealt * 100);
+			End;
+			Create In-World Text(Event Player, Custom String("-{0}", Event Player.LastDamageDealt), Victim, 1, Do Not Clip, String, Color(
+				Yellow), Default Visibility);
+			Event Player.FloatingDamageTextbox = Last Text ID;
+		Else;
+			Event Player.LastDamageTaken = Event Damage;
+			Create In-World Text(Event Player, Custom String("-{0}", Round To Integer(Event Player.LastDamageTaken, To Nearest)), Victim, 1,
+				Do Not Clip, String, Color(Yellow), Default Visibility);
+			Event Player.FloatingDamageTextbox = Last Text ID;
+		End;
+		Wait(0.450, Ignore Condition);
+		Destroy In-World Text(Event Player.FloatingDamageTextbox);
+	}
+}
+
+rule("Die instead of De-meching-------------------------------------------Heavy /DVa -----------------------------------")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		(Max Health(Event Player) > 294 && Max Health(Event Player) < 297) == True;
+	}
+
+	actions
+	{
+		Kill(Event Player, Null);
+	}
+}
+
+rule("Press Q to sandvich")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ultimate)) == True;
+		Ultimate Charge Percent(Event Player) == 100;
+		Is In Spawn Room(Event Player) == False;
+	}
+
+	actions
+	{
+		disabled Create Effect(All Players(All Teams), Mercy Heal Beam Sound, Color(White), Event Player, 100, None);
+		disabled Event Player.OngoingSFX = Last Created Entity;
+		Big Message(Event Player, Custom String("Eating Sandvich"));
+		"Reset ult guage"
+		Set Ultimate Charge(Event Player, 0);
+		"Switch to 3rd person camera"
+		Start Camera(Event Player, Eye Position(Event Player) + World Vector Of(Vector(0, 0, 2), Event Player, Rotation), Eye Position(
+			Event Player), 1000);
+		Set Status(Event Player, Null, Stunned, 4.300);
+		Wait(1, Ignore Condition);
+		"Heal for (188 x 0.4 = 75hp)"
+		Heal(Event Player, Event Player, 75);
+		Play Effect(All Players(All Teams), Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+		Wait(1, Ignore Condition);
+		Clear Status(Event Player, Burning);
+		Heal(Event Player, Event Player, 75);
+		Play Effect(All Players(All Teams), Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+		Wait(1, Ignore Condition);
+		Heal(Event Player, Event Player, 75);
+		Play Effect(All Players(All Teams), Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+		Wait(1, Ignore Condition);
+		Heal(Event Player, Event Player, 75);
+		Play Effect(All Players(All Teams), Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+		Wait(0.300, Ignore Condition);
+		Stop Camera(Event Player);
+	}
+}
+
+rule("Charge sandvich in spawn room")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		Is In Spawn Room(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, 100);
+	}
+}
+
+rule("Minigun spinup")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		(Is Button Held(Event Player, Button(Primary Fire)) || Is Button Held(Event Player, Button(Secondary Fire))) == True;
+	}
+
+	actions
+	{
+		disabled Set Move Speed(Event Player, 47);
+		Wait(0.870, Abort When False);
+		Set Primary Fire Enabled(Event Player, True);
+		disabled Set Status(Event Player, Null, Frozen, 0.870);
+		Set Damage Dealt(Event Player, 100);
+		Disallow Button(Event Player, Button(Jump));
+	}
+}
+
+rule("Minigun spindown")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Primary Fire)) == False;
+		Is Button Held(Event Player, Button(Secondary Fire)) == False;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 100);
+		Set Damage Dealt(Event Player, 0);
+		Allow Button(Event Player, Button(Jump));
+		Set Primary Fire Enabled(Event Player, False);
+	}
+}
+
+rule("Movespeed for LMB held")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Is Firing Primary(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 75);
+	}
+}
+
+rule("Movespeed for LMB held (not firing)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Is Firing Primary(Event Player) == False;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 46);
+	}
+}
+
+rule("Movespeed for RMB held")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Secondary Fire)) == True;
+		Is Button Held(Event Player, Button(Primary Fire)) == False;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 46);
+	}
+}
+
+rule("Delay between sniper shots ----------------------------- Sniper / Widowmaker --------------------------------------")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Widowmaker;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) == True;
+		Is Firing Primary(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Primary Fire Enabled(Event Player, False);
+		Set Secondary Fire Enabled(Event Player, False);
+		Event Player.SniperChargeOnCooldown = True;
+		Set Ultimate Charge(Event Player, 0);
+		"Refund the ammo"
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) + 5);
+		Wait(1, Ignore Condition);
+		Set Ultimate Charge(Event Player, 0);
+		Set Primary Fire Enabled(Event Player, True);
+		Set Secondary Fire Enabled(Event Player, True);
+		Event Player.SniperChargeOnCooldown = False;
+	}
+}
+
+rule("Paint crosshair dot & Charge Sniper")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Widowmaker;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Secondary Fire)) == True;
+		Event Player.SniperChargeOnCooldown != True;
+		Is On Ground(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.330, Abort When False);
+		Create Effect(All Players(All Teams), Sphere, Color(Red), Update Every Frame(Ray Cast Hit Position(Eye Position(Event Player),
+			Eye Position(Event Player) + Facing Direction Of(Event Player) * Vector(1000, 1000, 1000), Filtered Array(All Players(
+			All Teams), !Current Array Element.Invisible), Event Player, True)), 0.500 * 0.001 * Ultimate Charge Percent(Event Player),
+			Position and Radius);
+		Event Player.SniperDot = Last Created Entity;
+		While(Is Button Held(Event Player, Button(Secondary Fire)) && Is On Ground(Event Player) && !Event Player.SniperChargeOnCooldown);
+			Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + 5);
+			Wait(0.165, Ignore Condition);
+		End;
+		Destroy Effect(Event Player.SniperDot);
+		Set Ultimate Charge(Event Player, 0);
+	}
+}
+
+rule("Sniper (Widowmaker) - SMG Damage")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Widowmaker;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Secondary Fire)) == False;
+		disabled Is Firing Primary(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, 55);
+	}
+}
+
+rule("Sniper (Widowmaker) - Sniper Damage")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Widowmaker;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Secondary Fire)) == True;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, 1);
+	}
+}
+
+rule("All damage burns for 10s / Flare Gun Crit ----------------------- Pyro / Mei -------------------------------------")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		Mei;
+	}
+
+	conditions
+	{
+		"Doesn't work against Mei (Pyro)"
+		Hero Of(Victim) != Hero(Mei);
+		"Doesn't work on Engineer turrets"
+		Hero Of(Victim) != Hero(Bastion);
+		"Damage source must be primary or alt fire"
+		(Event Ability == Button(Primary Fire) || Event Ability == Button(Secondary Fire)) == True;
+	}
+
+	actions
+	{
+		"If weapon is flare gun (30 dmg) and target is burning"
+		If(Event Ability == Button(Secondary Fire) && Has Status(Victim, Burning));
+			"Deal 60 bonus damage (150 * 0.4)"
+			Damage(Victim, Event Player, 150);
+			Event Player.LastDamageTaken = 90;
+			Play Effect(Event Player, Buff Explosion Sound, Color(White), Event Player, 1);
+		End;
+		"Set Burning for 10s"
+		Set Status(Victim, Event Player, Burning, 10);
+		If(Victim.BurningEffect == Null);
+			Create Effect(All Players(All Teams), Ashe Dynamite Burning Particle Effect, Color(White), Victim, 1, Position and Radius);
+			Victim.BurningEffect = Last Created Entity;
+		End;
+		Victim.BurnSource = Event Player;
+		If(Victim.Cloaked);
+			Press Button(Victim, Button(Secondary Fire));
+		End;
+	}
+}
+
+rule("E to switch weapons Flamethrower/Flare Gun")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mei;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 2)) == True;
+	}
+
+	actions
+	{
+		If(Event Player.StickyOrFlaregunEquipped);
+			Event Player.EquippedWeaponHUDText = Custom String("Flamethrower");
+			Event Player.StickyOrFlaregunEquipped = False;
+			Set Primary Fire Enabled(Event Player, True);
+			Set Projectile Speed(Event Player, 75);
+			Set Damage Dealt(Event Player, 150);
+		Else;
+			Event Player.EquippedWeaponHUDText = Custom String("Flare Gun");
+			Event Player.StickyOrFlaregunEquipped = True;
+			Set Primary Fire Enabled(Event Player, False);
+			Set Projectile Speed(Event Player, 50);
+			Set Damage Dealt(Event Player, 40);
+		End;
+	}
+}
+
+rule("Fire Flare Gun")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mei;
+	}
+
+	conditions
+	{
+		Event Player.StickyOrFlaregunEquipped == True;
+		(Is Button Held(Event Player, Button(Primary Fire)) || Is Button Held(Event Player, Button(Secondary Fire))) == True;
+	}
+
+	actions
+	{
+		Set Secondary Fire Enabled(Event Player, True);
+		disabled Wait(0.016, Ignore Condition);
+		Press Button(Event Player, Button(Secondary Fire));
+		Wait(0.400, Ignore Condition);
+		Set Secondary Fire Enabled(Event Player, False);
+		Wait(1.600, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Burning players take 8dps for 10s")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Status(Event Player, Burning) == True;
+	}
+
+	actions
+	{
+		Wait(0.500, Ignore Condition);
+		If(Event Player.BurnSource.StickyOrFlaregunEquipped);
+			Damage(Event Player, Event Player.BurnSource, 10);
+		Else;
+			Damage(Event Player, Event Player.BurnSource, 2.667);
+		End;
+		Loop If Condition Is True;
+	}
+}
+
+rule("Airblast (RMB)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mei;
+	}
+
+	conditions
+	{
+		Event Player.StickyOrFlaregunEquipped == False;
+		Is Button Held(Event Player, Button(Secondary Fire)) == True;
+	}
+
+	actions
+	{
+		If(Distance Between(Event Player, Player Closest To Reticle(Event Player, Opposite Team Of(Team Of(Event Player)))) <= 4);
+			Apply Impulse(Player Closest To Reticle(Event Player, Opposite Team Of(Team Of(Event Player))), Vector(0, 1, 0), 5, To World,
+				Cancel Contrary Motion);
+			Apply Impulse(Player Closest To Reticle(Event Player, Opposite Team Of(Team Of(Event Player))), Facing Direction Of(Event Player),
+				25, To World, Incorporate Contrary Motion);
+		End;
+		If(Distance Between(Event Player, Player Closest To Reticle(Event Player, Team Of(Event Player))) <= 4);
+			Clear Status(Player Closest To Reticle(Event Player, Team Of(Event Player)), Burning);
+		End;
+		Set Ultimate Charge(Event Player, 0);
+		Play Effect(Event Player, Bad Explosion, Color(White), Eye Position(Event Player) + Facing Direction Of(Event Player) + Vector(0,
+			-0.400, 0), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, Color(White), Event Player, 1);
+		"Give kill credit to Mei if target dies to environment"
+		Set Environment Credit Player(Player Closest To Reticle(Event Player, Opposite Team Of(Team Of(Event Player))), Event Player);
+	}
+}
+
+rule("Pick up healthpack = Clear burn")
+{
+	event
+	{
+		Player Received Healing;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Was Health Pack == True;
+		Has Status(Event Player, Burning) == True;
+	}
+
+	actions
+	{
+		Clear Status(Event Player, Burning);
+		Event Player.BurnSource = Null;
+	}
+}
+
+rule("BeingHealed by medic for 1s = Clear burn")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.BeingHealed == True;
+		Has Status(Event Player, Burning) == True;
+	}
+
+	actions
+	{
+		Wait(1, Abort When False);
+		Clear Status(Event Player, Burning);
+		Event Player.BurnSource = Null;
+	}
+}
+
+rule("Enter spawnroom = Clear burn")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is In Spawn Room(Event Player) == True;
+	}
+
+	actions
+	{
+		Clear Status(Event Player, Burning);
+	}
+}
+
+rule("If burning stops, destroy Ashe burn effect")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Status(Event Player, Burning) == False;
+	}
+
+	actions
+	{
+		Destroy Effect(Event Player.BurningEffect);
+		Event Player.BurningEffect = Null;
+	}
+}
+
+rule("Backstab damage bonus----------------------------------------- Spy / McCree ----------------------------------------")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Event Player.Invisible == False;
+		Event Ability == Button(Melee);
+		Hero Of(Victim) != Hero(Bastion);
+		Hero Of(Victim) != Hero(Soldier: 76);
+		Angle Between Vectors(Facing Direction Of(Victim) * Vector(1, 0, 1), Event Direction * Vector(1, 0, 1)) <= 90;
+	}
+
+	actions
+	{
+		"Deal lethal damage"
+		Damage(Victim, Event Player, 2000);
+		Event Player.LastDamageDealt = 500;
+	}
+}
+
+rule("Invisible on RMB (or Q) - Third Person")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		(Is Button Held(Event Player, Button(Secondary Fire)) || Is Button Held(Event Player, Button(Ultimate))) == True;
+	}
+
+	actions
+	{
+		"If player was already invisible"
+		If(Event Player.Invisible != 0);
+			Call Subroutine(Decloak);
+		Else;
+			"Not burning, not on objective, and has more than 5% cloak charge"
+			If(Ultimate Charge Percent(Event Player) >= 5 && !Is On Objective(Event Player) && !Has Status(Event Player, Burning));
+				Play Effect(All Players(Team Of(Event Player)), Reaper Wraith Form Sound, Color(White), Event Player, 100);
+				Create Effect(Event Player, Moira Coalescence Sound, Color(White), Event Player, 100, Position and Radius);
+				Event Player.InvisEffectArray[1] = Last Created Entity;
+				If(Event Player.ThirdPersonEnabled);
+					"Switch to 3rd person camera"
+					Start Camera(Event Player, Eye Position(Event Player) + World Vector Of(Vector(1, 0, -1.500), Event Player, Rotation),
+						Eye Position(Event Player) + World Vector Of(Vector(1, 0, -1.500), Event Player, Rotation) + Facing Direction Of(Event Player),
+						22);
+				End;
+				Event Player.Invisible = 0.500;
+				Wait(0.010, Ignore Condition);
+				Event Player.SpyCloakFlicker = True;
+				Create HUD Text(Event Player, Custom String("Cloaking..."), Null, Null, Right, 0, Color(Red), Color(White), Color(White),
+					Visible To and String, Default Visibility);
+				Event Player.InvisTextArray[1] = Last Text ID;
+				Set Primary Fire Enabled(Event Player, False);
+				Set Melee Enabled(Event Player, False);
+				Wait(1, Ignore Condition);
+				Create Effect(All Players(Team Of(Event Player)), Ring, Color(Violet), Update Every Frame(Position Of(Event Player)), 0.700,
+					Visible To Position and Radius);
+				Event Player.InvisEffectArray[0] = Last Created Entity;
+				"Clear \"Cloaking...\" from HUD"
+				Destroy HUD Text(Event Player.InvisTextArray[1]);
+				Event Player.Invisible = 1;
+				Create HUD Text(Event Player, Custom String("Invisible"), Null, Null, Right, 0, Color(Sky Blue), Color(White), Color(White),
+					Visible To and String, Default Visibility);
+				Event Player.InvisTextArray[1] = Last Text ID;
+				Event Player.SpyCloakFlicker = False;
+				If(Event Player.Disguised);
+					Set Invisible(Event Player.Bot1, All);
+				Else;
+					Set Invisible(Event Player, All);
+				End;
+			End;
+		End;
+	}
+}
+
+rule("While cloak is active and player is moving, drain ult charge")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Event Player.Invisible == 1;
+		Throttle Of(Event Player) != Vector(0, 0, 0);
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) - 1);
+		Wait(0.066, Abort When False);
+		Loop If Condition Is True;
+	}
+}
+
+rule("While cloak is inactive or player not moving, regen ult charge")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		(Event Player.Invisible != 1 || Throttle Of(Event Player) == Vector(0, 0, 0)) == True;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + 1);
+		Wait(0.150, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Charge cloak to full in spawn room")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Is In Spawn Room(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, 100);
+	}
+}
+
+rule("When cloak runs out, force decloak")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Ultimate Charge Percent(Event Player) <= 1;
+		Event Player.Invisible == 1;
+	}
+
+	actions
+	{
+		Call Subroutine(Decloak);
+	}
+}
+
+rule("Decloak (subroutine)")
+{
+	event
+	{
+		Subroutine;
+		Decloak;
+	}
+
+	actions
+	{
+		Event Player.SpyCloakFlicker = True;
+		Event Player.Invisible = 0.500;
+		"Clear \"Invisible\" from HUD"
+		Destroy HUD Text(Event Player.InvisTextArray[1]);
+		"Add \"Decloaking\" to HUD"
+		Create HUD Text(Event Player, Custom String("Decloaking..."), Null, Null, Right, 0, Color(Red), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Event Player.InvisTextArray[1] = Last Text ID;
+		"Create red smoke visible to everyone"
+		disabled Create Effect(All Players(All Teams), Bad Aura, Color(Red), Event Player, 0.600, Visible To Position and Radius);
+		disabled Event Player.InvisEffectArray[1] = Last Created Entity;
+		"Clear purple ring"
+		Destroy Effect(Event Player.InvisEffectArray[0]);
+		Wait(2, Ignore Condition);
+		"Clear \"Decloaking...\" from HUD"
+		Destroy HUD Text(Event Player.InvisTextArray[1]);
+		"Clear Moira cloak sound"
+		Destroy Effect(Event Player.InvisEffectArray[1]);
+		Event Player.SpyCloakFlicker = False;
+		"Clear red smoke"
+		disabled Destroy Effect(Event Player.InvisEffectArray[1]);
+		"Clear Red HUD effect"
+		disabled Destroy Effect(Event Player.InvisEffectArray[2]);
+		"Re-enable revolver"
+		Set Primary Fire Enabled(Event Player, True);
+		Set Melee Enabled(Event Player, True);
+		Event Player.Invisible = 0;
+		If(Event Player.Disguised);
+			If(Event Player.ThirdPersonEnabled);
+				Set Invisible(Event Player.Bot1, None);
+			Else;
+				Set Invisible(Event Player.Bot1, Enemies);
+			End;
+		Else;
+			Set Invisible(Event Player, None);
+			"Switch back to 1st-person camera"
+			Stop Camera(Event Player);
+		End;
+	}
+}
+
+rule("Force decloak while on objective")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is On Objective(Event Player) == True;
+		(Event Player.Invisible == 1 || Event Player.Invisible == 0.500) == True;
+	}
+
+	actions
+	{
+		Call Subroutine(Decloak);
+	}
+}
+
+rule("Flicker logic - Cloak flash while cloaking/decloaking/damage/bump (toggleable with SpyCloakFlicker boolean)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Event Player.SpyCloakFlicker == True;
+	}
+
+	actions
+	{
+		While(Event Player.SpyCloakFlicker);
+			If(Event Player.Disguised);
+				If(Event Player.ThirdPersonEnabled);
+					Set Invisible(Event Player.Bot1, None);
+				Else;
+					Set Invisible(Event Player.Bot1, Enemies);
+				End;
+			Else;
+				Set Invisible(Event Player, None);
+			End;
+			Wait(0.100, Abort When False);
+			If(Event Player.Disguised);
+				Set Invisible(Event Player.Bot1, All);
+			Else;
+				Set Invisible(Event Player, All);
+			End;
+			Wait(0.050, Abort When False);
+		End;
+	}
+}
+
+rule("On death - clear all invis text/effects, make player visible, destroy disguise bot, reset camera")
+{
+	event
+	{
+		Player Died;
+		All;
+		Cassidy;
+	}
+
+	actions
+	{
+		Set Invisible(Event Player, None);
+		"clear cloaking/invisible/decloaking HUD text"
+		Destroy HUD Text(Event Player.InvisTextArray[1]);
+		"clear Moira cloak sound"
+		Destroy Effect(Event Player.InvisEffectArray[1]);
+		"clear purple ring"
+		Destroy Effect(Event Player.InvisEffectArray[0]);
+		Destroy Dummy Bot(Team Of(Event Player), Slot Of(Event Player.Bot1));
+		Stop Camera(Event Player);
+	}
+}
+
+rule("Electro-sapper on sentry melee")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Event Ability == Button(Melee);
+		Event Player.Invisible == False;
+		Hero Of(Victim) == Hero(Bastion);
+	}
+
+	actions
+	{
+		Set Status(Victim, Event Player, Stunned, 9999);
+		Start Damage Over Time(Victim, Null, 9999, 25);
+		Victim.SapperDOTID = Last Damage Over Time ID;
+		Victim.BotOwner.BuildingSappedArray[1] = 2;
+		Create Effect(All Players(All Teams), Winston Tesla Cannon Sound, Color(White), Victim, 100, None);
+		Victim.BotOwner.SapperEffects[0] = Last Created Entity;
+	}
+}
+
+rule("Flicker when colliding with enemy")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Event Player.Invisible == 1;
+		disabled Filtered Array(All Living Players(Opposite Team Of(Team Of(Event Player))), Distance Between(Position Of(Event Player),
+			Position Of(Current Array Element)) <= 1.400) != Empty Array;
+		Filtered Array(Filtered Array(All Living Players(Opposite Team Of(Team Of(Event Player))), !Is Dummy Bot(Current Array Element)),
+			Distance Between(Event Player, Current Array Element) <= 1.400) != Empty Array;
+	}
+
+	actions
+	{
+		Event Player.SpyCloakFlicker = True;
+		Event Player.Invisible = 0.500;
+		Wait Until(Filtered Array(All Living Players(Opposite Team Of(Team Of(Event Player))), Distance Between(Position Of(Event Player),
+			Position Of(Current Array Element)) <= 1.400) == Empty Array, 999);
+		If(Event Player.Invisible == True && Event Player.TimeSinceLastDamage >= 0.500);
+			Wait(0.500, Ignore Condition);
+			Event Player.SpyCloakFlicker = False;
+			Set Invisible(Event Player, All);
+			Event Player.Invisible = 1;
+		End;
+	}
+}
+
+rule("Flicker on damage")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Event Player.Invisible == True;
+		Event Player.TimeSinceLastDamage < 0.500;
+	}
+
+	actions
+	{
+		Event Player.SpyCloakFlicker = True;
+		Event Player.Invisible = 0.500;
+	}
+}
+
+rule("Stop flickering on no damage for 0.5s")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Event Player.Invisible != 0;
+		Event Player.TimeSinceLastDamage >= 0.500;
+	}
+
+	actions
+	{
+		If(Count Of(Filtered Array(Players Within Radius(Event Player, 1.400, Opposite Team Of(Team Of(Event Player)), Off), Is Alive(
+			Current Array Element))) == 0);
+			Event Player.SpyCloakFlicker = False;
+			Set Invisible(Event Player, All);
+			Event Player.Invisible = 1;
+		End;
+	}
+}
+
+rule("E to cycle disguises")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 2)) == True;
+	}
+
+	actions
+	{
+		If(Event Player.DisguiseSelection == Hero(Reaper));
+			Event Player.DisguiseSelection = Hero(Pharah);
+		Else If(Event Player.DisguiseSelection == Hero(Pharah));
+			Event Player.DisguiseSelection = Hero(Mei);
+		Else If(Event Player.DisguiseSelection == Hero(Mei));
+			Event Player.DisguiseSelection = Hero(Junkrat);
+		Else If(Event Player.DisguiseSelection == Hero(Junkrat));
+			Event Player.DisguiseSelection = Hero(D.Va);
+		Else If(Event Player.DisguiseSelection == Hero(D.Va));
+			Event Player.DisguiseSelection = Hero(Torbjörn);
+		Else If(Event Player.DisguiseSelection == Hero(Torbjörn));
+			Event Player.DisguiseSelection = Hero(Mercy);
+		Else If(Event Player.DisguiseSelection == Hero(Mercy));
+			Event Player.DisguiseSelection = Hero(Widowmaker);
+		Else If(Event Player.DisguiseSelection == Hero(Widowmaker));
+			Event Player.DisguiseSelection = Hero(Cassidy);
+		Else If(Event Player.DisguiseSelection == Hero(Cassidy));
+			Event Player.DisguiseSelection = Hero(Reaper);
+		End;
+	}
+}
+
+rule("Disguise - Shift to activate")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+		(!Event Player.Disguised || Hero Of(Event Player.Bot1) != Event Player.DisguiseSelection) == True;
+		disabled Is In Spawn Room(Event Player) == False;
+	}
+
+	actions
+	{
+		Set Primary Fire Enabled(Event Player, False);
+		Set Melee Enabled(Event Player, False);
+		If(Event Player.ThirdPersonEnabled);
+			Start Camera(Event Player, Eye Position(Event Player) + World Vector Of(Vector(1, 0, -1.500), Event Player, Rotation),
+				Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player) * 1000,
+				All Players(All Teams), Event Player, True), 22);
+		End;
+		"Switch to 3rd person camera"
+		disabled Start Camera(Event Player, Eye Position(Event Player) + World Vector Of(Vector(1, 0, -1.500), Event Player, Rotation),
+			Eye Position(Event Player) + World Vector Of(Vector(1, 0, -1.500), Event Player, Rotation) + Facing Direction Of(Event Player),
+			22);
+		Create Effect(Event Player, Orisa Halt Tendril Sound, Color(White), Event Player, 100, Position and Radius);
+		Event Player.InvisEffectArray[6] = Last Created Entity;
+		If(Is Dummy Bot(Event Player.Bot1));
+			Create Effect(All Players(All Teams), Sigma Gravitic Flux Target Effect, Color(White), Event Player.Bot1, 100,
+				Position and Radius);
+			Event Player.InvisEffectArray[5] = Last Created Entity;
+			Wait(0.500, Ignore Condition);
+			Destroy Dummy Bot(Opposite Team Of(Team Of(Event Player)), Slot Of(Event Player.Bot1));
+		Else;
+			Create Effect(All Players(All Teams), Sigma Gravitic Flux Target Effect, Color(White), Event Player, 100, Position and Radius);
+			Event Player.InvisEffectArray[5] = Last Created Entity;
+			Wait(2, Ignore Condition);
+		End;
+		Event Player.Disguised = True;
+		Destroy Effect(Event Player.InvisEffectArray[5]);
+		Destroy Effect(Event Player.InvisEffectArray[6]);
+		Create Dummy Bot(Event Player.DisguiseSelection, Opposite Team Of(Team Of(Event Player)), -1, Event Player, Facing Direction Of(
+			Event Player));
+		Event Player.Bot1 = Last Created Entity;
+		If(Event Player.Invisible != 0);
+			Set Invisible(Event Player.Bot1, All);
+		End;
+		Disable Movement Collision With Players(Event Player.Bot1);
+		Set Status(Event Player.Bot1, Null, Phased Out, 9999);
+		Start Facing(Event Player.Bot1, Facing Direction Of(Event Player), 9999, To World, Direction and Turn Rate);
+		Attach Players(Event Player, Event Player.Bot1, Vector(0, 0, 0));
+		If(Throttle Of(Event Player) != Vector(0, 0, 0));
+			Start Throttle In Direction(Event Player.Bot1, Throttle Of(Event Player), 1, To Player, Replace existing throttle,
+				Direction and Magnitude);
+		End;
+		Set Invisible(Event Player, All);
+		disabled Create In-World Text(All Players(All Teams), Custom String("{0} (Friendly Spy)", Event Player), Eye Position(Event Player.Bot1)
+			+ Vector(0, 0.250, 0), 1, Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+		Create In-World Text(All Players(All Teams), Event Player, Event Player.Bot1, 1, Clip Against Surfaces,
+			Visible To Position and String, Color(Sky Blue), Default Visibility);
+		disabled Create In-World Text(Filtered Array(All Players(Team Of(Event Player)), Current Array Element != Event Player), Custom String(
+			"{0} (Friendly Spy)", Event Player), Eye Position(Event Player.Bot1) + Vector(0, 1, 0), 1, Clip Against Surfaces,
+			Visible To Position and String, Color(White), Default Visibility);
+		Event Player.InvisEffectArray[5] = Last Created Entity;
+		Set Primary Fire Enabled(Event Player, True);
+		Set Melee Enabled(Event Player, True);
+		If(Count Of(Filtered Array(Filtered Array(All Players(Opposite Team Of(Team Of(Event Player))), !Is Dummy Bot(
+			Current Array Element)), Hero Of(Current Array Element) == Event Player.DisguiseSelection)) != 0);
+			Start Forcing Dummy Bot Name(Event Player.Bot1, First Of(Filtered Array(Filtered Array(All Players(Opposite Team Of(Team Of(
+				Event Player))), !Is Dummy Bot(Current Array Element)), Hero Of(Current Array Element) == Event Player.DisguiseSelection)));
+		Else;
+			Start Forcing Dummy Bot Name(Event Player.Bot1, Random Value In Array(Filtered Array(All Players(Opposite Team Of(Team Of(
+				Event Player))), !Is Dummy Bot(Current Array Element))));
+		End;
+	}
+}
+
+rule("DisguiseBot - Start Crouch")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Crouch)) == True;
+	}
+
+	actions
+	{
+		Start Holding Button(Event Player.Bot1, Button(Crouch));
+	}
+}
+
+rule("DisguiseBot - Stop Crouch")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Crouch)) == False;
+	}
+
+	actions
+	{
+		Stop Holding Button(Event Player.Bot1, Button(Crouch));
+	}
+}
+
+rule("DisguiseBot - Jump")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Jump)) == True;
+	}
+
+	actions
+	{
+		Press Button(Event Player.Bot1, Button(Jump));
+	}
+}
+
+rule("Disguisebot - Stop moving")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Throttle Of(Event Player) == Vector(0, 0, 0);
+	}
+
+	actions
+	{
+		Stop Throttle In Direction(Event Player.Bot1);
+		disabled Teleport(Event Player.Bot1, Event Player);
+	}
+}
+
+rule("Disguisebot - Move with player")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Throttle Of(Event Player) != Vector(0, 0, 0);
+	}
+
+	actions
+	{
+		Start Throttle In Direction(Event Player.Bot1, Throttle Of(Event Player), 1, To Player, Replace existing throttle,
+			Direction and Magnitude);
+		disabled Teleport(Event Player.Bot1, Event Player + Facing Direction Of(Event Player));
+		disabled While(True);
+		disabled Teleport(Event Player.Bot1, Event Player);
+		disabled Wait(0.250, Abort When False);
+		disabled End;
+	}
+}
+
+rule("Attacking drops disguise")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Event Player.Disguised == True;
+		(Is Firing Primary(Event Player) || Is Meleeing(Event Player)) == True;
+	}
+
+	actions
+	{
+		Event Player.Disguised = False;
+		Event Player.TargetableBySentry = True;
+		Destroy Dummy Bot(Opposite Team Of(Team Of(Event Player)), Slot Of(Event Player.Bot1));
+		Event Player.Bot1 = Null;
+		Stop Camera(Event Player);
+		Destroy In-World Text(Event Player.InvisEffectArray[5]);
+		Set Invisible(Event Player, None);
+	}
+}
+
+rule("Set HealTarget/BeingHealed ---------------------------------- Medic / Mercy -------------------------------------------")
+{
+	event
+	{
+		Player Received Healing;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Hero Of(Healer) == Hero(Mercy);
+		Healer != Event Player;
+	}
+
+	actions
+	{
+		Event Player.BeingHealed = True;
+		Healer.HealTarget = Event Player;
+		Event Player.Healer = Healer;
+		Event Player.TimeSinceMercyHealed = 0;
+		Chase Player Variable Over Time(Event Player, TimeSinceMercyHealed, 1, 1, None);
+		"If healer is ubercharged"
+		If(Healer.Ubercharged == True);
+			"Healee gets ubercharged too"
+			Event Player.Ubercharged = True;
+		End;
+	}
+}
+
+rule("Set not healing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.TimeSinceMercyHealed >= 0.250;
+	}
+
+	actions
+	{
+		Event Player.BeingHealed = False;
+		Event Player.Healer = Null;
+		If(Event Player.Healer.HealTarget == Event Player);
+			Event Player.Healer.HealTarget = Null;
+		End;
+		If(Hero Of(Event Player) != Hero(Mercy));
+			Event Player.Ubercharged = False;
+	}
+}
+
+rule("HealBeam Breaks (set HealTarget = Null)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mercy;
+	}
+
+	conditions
+	{
+		"If LOS breaks or distance becomes greater than 15.51 meters"
+		(!Is In Line of Sight(Eye Position(Event Player), Eye Position(Event Player.HealTarget), Barriers Do Not Block LOS)
+			|| Distance Between(Eye Position(Event Player), Eye Position(Event Player.HealTarget)) > 15.510) == True;
+	}
+
+	actions
+	{
+		Wait(1.700, Abort When False);
+		"Remove uber if ubered"
+		If(Event Player.Ubercharged);
+			Event Player.HealTarget.Ubercharged = False;
+		End;
+		Event Player.HealTarget.BeingHealed = False;
+		Stop Heal Over Time(Event Player.HealTarget.HealTargetHealOverTimeID);
+		Event Player.HealTarget = Null;
+	}
+}
+
+rule("Overheal")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		"Have Full Health"
+		Normalized Health(Event Player) >= 1;
+		"Not at Max Overheal"
+		Event Player.OverhealPool < Event Player.OverhealMaxPool;
+		"Being healed by a Mercy"
+		Event Player.BeingHealed == True;
+	}
+
+	actions
+	{
+		Chase Player Variable At Rate(Event Player, OverhealPool, Event Player.OverhealMaxPool, 50, Destination and Rate);
+		disabled Chase Player Variable Over Time(Event Player.HealTarget, OverhealPool, Max Health(Event Player) * 0.500, 3,
+			Destination and Duration);
+		disabled Add Health Pool To Player(Event Player, Health, Event Player.OverhealPool, True, True);
+	}
+}
+
+rule("Overheal Decay")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.BeingHealed == False;
+		Event Player.OverhealPool > 0;
+	}
+
+	actions
+	{
+		Chase Player Variable At Rate(Event Player, OverhealPool, 0, 10, None);
+	}
+}
+
+rule("Medic Dies, set Uber to zero")
+{
+	event
+	{
+		Player Died;
+		All;
+		Mercy;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, 0);
+	}
+}
+
+rule("Mercy (Medic) - Ubercharge on Q Press AND Ubercharge End")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mercy;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ultimate)) == True;
+		Ultimate Charge Percent(Event Player) == 100;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, 0);
+		"Set Ubercharged variable true"
+		Event Player.Ubercharged = True;
+		"If there is a player being healed"
+		If(Event Player.HealTarget != Null);
+			"Set them Ubercharged too"
+			Event Player.HealTarget.Ubercharged = True;
+		End;
+		"Expires after 8s"
+		Wait(8, Ignore Condition);
+		"Set Ubercharged variable false"
+		Event Player.Ubercharged = False;
+		"If there is a player being healed"
+		If(Event Player.HealTarget != Null);
+			"Disable their Ubercharged too"
+			Event Player.HealTarget.Ubercharged = False;
+		End;
+	}
+}
+
+rule("Start Ubercharge Effects")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.Ubercharged == True;
+	}
+
+	actions
+	{
+		"Go invincible 10s"
+		Set Status(Event Player, Null, Invincible, 8);
+		"Create alert message that uber is active"
+		Big Message(Event Player, Custom String("UBERCHARGE ACTIVE, YOU ARE INVULNERABLE!"));
+		Create Effect(All Players(All Teams), Energy Sound, Color(White), Event Player, 100, Visible To Position and Radius);
+		Event Player.UberchargeEffectArray = Last Created Entity;
+		Create Effect(All Players(All Teams), Sparkles, Color(White), Event Player, 1.500, Visible To Position and Radius);
+		Modify Player Variable(Event Player, UberchargeEffectArray, Append To Array, Last Created Entity);
+		disabled Create Effect(All Players(All Teams), Sphere, Color(Yellow), Event Player, 1, Visible To Position and Radius);
+		disabled Modify Player Variable(Event Player, UberchargeEffectArray, Append To Array, Last Created Entity);
+		Create Effect(Event Player, Light Shaft, Color(Yellow), Event Player, 1, Visible To Position and Radius);
+		Modify Player Variable(Event Player, UberchargeEffectArray, Append To Array, Last Created Entity);
+		disabled Start Camera(Event Player, Eye Position(Event Player) + World Vector Of(Vector(1, 0, -1.500), Event Player, Rotation),
+			Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player) * 1000,
+			All Players(All Teams), Event Player, True), 22);
+	}
+}
+
+rule("End Ubercharge Effects")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.Ubercharged == False;
+	}
+
+	actions
+	{
+		Clear Status(Event Player, Invincible);
+		For Player Variable(Event Player, Index, 0, Count Of(Event Player.UberchargeEffectArray), 1);
+			Destroy Effect(Event Player.UberchargeEffectArray[Event Player.Index]);
+		End;
+		Event Player.UberchargeEffectArray = Null;
+		Event Player.HealTarget.Ubercharged = False;
+		Stop Camera(Event Player);
+	}
+}
+
+rule("Mercy Passive Self-Heal (reset ramp on damage)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mercy;
+	}
+
+	conditions
+	{
+		Event Player.TimeSinceLastDamage <= 1;
+	}
+
+	actions
+	{
+		Stop Heal Over Time(Event Player.MercyHealOverTimeID);
+		Start Heal Over Time(Event Player, Event Player, 3.333, 3);
+		Event Player.MercyHealOverTimeID = Last Heal Over Time ID;
+		Wait(3.333, Restart When True);
+		Start Heal Over Time(Event Player, Event Player, 3.333, 4);
+		Event Player.MercyHealOverTimeID = Last Heal Over Time ID;
+		Wait(3.333, Restart When True);
+		Start Heal Over Time(Event Player, Event Player, 3.333, 5);
+		Event Player.MercyHealOverTimeID = Last Heal Over Time ID;
+		Wait(3.333, Restart When True);
+		Start Heal Over Time(Event Player, Event Player, 9999, 6);
+		Event Player.MercyHealOverTimeID = Last Heal Over Time ID;
+	}
+}
+
+rule("Mercy Max Healing Ramp 2x (48 HP/s)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Event Player.TimeSinceLastDamage >= 5 && Event Player.TimeSinceLastDamage) < 10;
+		Event Player.BeingHealed == True;
+	}
+
+	actions
+	{
+		Stop Heal Over Time(Event Player.HealTargetHealOverTimeID);
+		Start Heal Over Time(Event Player, Event Player, 9999, 24);
+		Event Player.HealTargetHealOverTimeID = Last Heal Over Time ID;
+	}
+}
+
+rule("Mercy Max Healing Ramp 3x (72 HP/s)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.TimeSinceLastDamage >= 10;
+		Event Player.BeingHealed == True;
+	}
+
+	actions
+	{
+		Stop Heal Over Time(Event Player.HealTargetHealOverTimeID);
+		Start Heal Over Time(Event Player, Event Player, 9999, 48);
+		Event Player.HealTargetHealOverTimeID = Last Heal Over Time ID;
+	}
+}
+
+rule("Stop Mercy Max Healing Ramp when healing ends/damage taken (reset to 24 HP/s)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(!Event Player.BeingHealed || Event Player.TimeSinceLastDamage < 5) == True;
+	}
+
+	actions
+	{
+		Stop Heal Over Time(Event Player.HealTargetHealOverTimeID);
+	}
+}
+
+rule("AllowDoubleJump----------------------------------------------- Scout / Reaper --------------------------------------------")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reaper;
+	}
+
+	conditions
+	{
+		Altitude Of(Event Player) > 0.800;
+		Is Button Held(Event Player, Button(Jump)) == False;
+		Event Player.NumOfDoubleJumps > 0;
+		Is Dummy Bot(Event Player) == False;
+	}
+
+	actions
+	{
+		Event Player.AllowDoubleJump = True;
+	}
+}
+
+rule("Disallow doublejump if you are out of jumps")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reaper;
+	}
+
+	conditions
+	{
+		Event Player.NumOfDoubleJumps <= 0;
+	}
+
+	actions
+	{
+		Event Player.AllowDoubleJump = False;
+	}
+}
+
+rule("If you jump in the air and doublejump is allowed, double jump and consume a charge")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reaper;
+	}
+
+	conditions
+	{
+		Event Player.AllowDoubleJump == True;
+		Is Button Held(Event Player, Button(Jump)) == True;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Up, 8, To World, Cancel Contrary Motion);
+		Event Player.NumOfDoubleJumps -= 1;
+	}
+}
+
+rule("Touching the ground resets jump count and disallows doublejump")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reaper;
+	}
+
+	conditions
+	{
+		Is In Air(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.NumOfDoubleJumps = 1;
+		Event Player.AllowDoubleJump = False;
+	}
+}
+
+rule("Automatic Reloading")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reaper;
+	}
+
+	conditions
+	{
+		Is Firing Primary(Event Player) == False;
+		Ammo(Event Player, 0) < 6;
+		disabled Event Player.StickyOrFlaregunEquipped == False;
+	}
+
+	actions
+	{
+		Wait(0.825, Abort When False);
+		While(Ammo(Event Player, 0) < 6);
+			Wait(0.500, Abort When False);
+			Set Ammo(Event Player, 0, Ammo(Event Player, 0) + 1);
+			Play Effect(Event Player, Brigitte Repair Pack Armor Sound, Color(White), Event Player, 100);
+		End;
+	}
+}
+
+rule("E to Switch Weapon ----------------------------------------- Demoman / Junkrat -----------------------------------------")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Junkrat;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 2)) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		If(Event Player.StickyOrFlaregunEquipped);
+			Set Primary Fire Enabled(Event Player, True);
+			Event Player.StickyOrFlaregunEquipped = False;
+			Destroy HUD Text(Event Player.ClassGuideHUDTextArray[0]);
+			Create HUD Text(All Players(All Teams), Custom String("Pipebomb Launcher"), Null, Custom String("(E) Switch"), Top, 0, Color(Blue),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.ClassGuideHUDTextArray[0] = Last Text ID;
+		Else;
+			Set Primary Fire Enabled(Event Player, False);
+			Event Player.StickyOrFlaregunEquipped = True;
+			Destroy HUD Text(Event Player.ClassGuideHUDTextArray[0]);
+			Create HUD Text(All Players(All Teams), Custom String("Stickybomb Launcher"), Null, Custom String("(E) Switch"), Top, 0, Color(
+				Blue), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.ClassGuideHUDTextArray[0] = Last Text ID;
+		End;
+	}
+}
+
+rule("Launch Stickybomb / Detonate first sticky if this is 9th sticky")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Junkrat;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Event Player.StickyOrFlaregunEquipped == True;
+		Event Player.MovingBombEffect == Null;
+		Is Alive(Event Player) == True;
+		Event Player.StickyAmmo > 0;
+	}
+
+	actions
+	{
+		"Wait a frame to make sure this executes after reload finishes its loop otherwise it will continue looping while player is holding LMB on 0 ammo"
+		Wait(0.016, Ignore Condition);
+		If(Count Of(Event Player.StuckBombsArray) >= 9);
+			Play Effect(All Players(All Teams), Bad Explosion, Color(Orange), Event Player.StuckBombLocationsArray[1], 1.500);
+			Play Effect(All Players(All Teams), Cassidy Flashbang Explosion Sound, Color(Orange), Event Player.StuckBombLocationsArray[1],
+				100);
+			Destroy Effect(Event Player.StuckBombsArray[1]);
+			"Set PlayersInBlastRadius to all players within 2m of sticky"
+			Event Player.PlayersInBlastRadiusArray = Players Within Radius(Event Player.StuckBombLocationsArray[1], 2.800, Opposite Team Of(
+				Team Of(Event Player)), Off);
+			If(Distance Between(Event Player, Event Player.StuckBombLocationsArray[1]) <= 2.800);
+				Modify Player Variable(Event Player, PlayersInBlastRadiusArray, Append To Array, Event Player);
+			End;
+			For Player Variable(Event Player, Index2, 0, Count Of(Event Player.PlayersInBlastRadiusArray), 1);
+				Event Player.DistanceFromBlastScalar = 2.800 - Distance Between(Event Player.PlayersInBlastRadiusArray[Event Player.Index2],
+					Event Player.StuckBombLocationsArray[1]);
+				Apply Impulse(Event Player.PlayersInBlastRadiusArray[Event Player.Index2], Vector Towards(Event Player.StuckBombLocationsArray[1],
+					Eye Position(Event Player.PlayersInBlastRadiusArray[Event Player.Index2])), Event Player.DistanceFromBlastScalar * 10,
+					To World, Incorporate Contrary Motion);
+				"Damage between 60 and 144 based on distance from grenade"
+				Damage(Event Player.PlayersInBlastRadiusArray[Event Player.Index2], Event Player, 60 + 30 * Event Player.DistanceFromBlastScalar);
+			End;
+			Modify Player Variable(Event Player, StuckBombsArray, Remove From Array By Index, 1);
+			Modify Player Variable(Event Player, StuckBombLocationsArray, Remove From Array By Index, 1);
+		End;
+		Event Player.BombDestination = Ray Cast Hit Normal(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+			Event Player) * 1000, All Players(Opposite Team Of(Team Of(Event Player))), Null, True) * 0.050 + Ray Cast Hit Position(
+			Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player) * 1000, All Players(
+			Opposite Team Of(Team Of(Event Player))), Null, True);
+		disabled Event Player.BombDestination = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+			Event Player) * 1000, All Players(Opposite Team Of(Team Of(Event Player))), Null, True);
+		Event Player.BombPosition = Eye Position(Event Player);
+		"Create moving stickybomb projectile"
+		Create Effect(All Players(All Teams), Sphere, Color(Red), Event Player.BombPosition, 0.080, Visible To Position and Radius);
+		"update every frame doesn't work because stickies are too small"
+		disabled Create Effect(All Players(All Teams), Sphere, Color(Red), Update Every Frame(Event Player.BombPosition), 0.080,
+			Visible To Position and Radius);
+		Event Player.MovingBombEffect = Last Created Entity;
+		Chase Player Variable At Rate(Event Player, BombPosition, Event Player.BombDestination, 30, Destination and Rate);
+		Play Effect(All Players(All Teams), Explosion Sound, Color(White), Event Player, 100);
+		Event Player.StickyAmmo -= 1;
+		Wait(0.600, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Stickybomb stuck")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Junkrat;
+	}
+
+	conditions
+	{
+		Event Player.BombPosition == Event Player.BombDestination;
+	}
+
+	actions
+	{
+		Destroy Effect(Event Player.MovingBombEffect);
+		Create Effect(All Players(All Teams), Sphere, Color(Orange), Event Player.BombDestination, 0.080, None);
+		Modify Player Variable(Event Player, StuckBombsArray, Append To Array, Last Created Entity);
+		Modify Player Variable(Event Player, StuckBombLocationsArray, Append To Array, Event Player.BombDestination);
+		Event Player.MovingBombEffect = Null;
+	}
+}
+
+rule("Detonate Stickybombs")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Junkrat;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Secondary Fire)) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		"For each sticky"
+		For Player Variable(Event Player, Index, 1, Count Of(Event Player.StuckBombsArray), 1);
+			"Play visual explosion effect"
+			Play Effect(All Players(All Teams), Bad Explosion, Color(Orange), Event Player.StuckBombLocationsArray[Event Player.Index], 1.500);
+			"Play sound effect"
+			Play Effect(All Players(All Teams), Cassidy Flashbang Explosion Sound, Color(Orange),
+				Event Player.StuckBombLocationsArray[Event Player.Index], 100);
+			Destroy Effect(Event Player.StuckBombsArray[Event Player.Index]);
+			"Set PlayersInBlastRadius to all players within 2m of sticky"
+			Event Player.PlayersInBlastRadiusArray = Players Within Radius(Event Player.StuckBombLocationsArray[Event Player.Index], 2.800,
+				Opposite Team Of(Team Of(Event Player)), Off);
+			For Player Variable(Event Player, Index2, 0, Count Of(Event Player.PlayersInBlastRadiusArray), 1);
+				Event Player.DistanceFromBlastScalar = 2.800 - Distance Between(Event Player.PlayersInBlastRadiusArray[Event Player.Index2],
+					Event Player.StuckBombLocationsArray[Event Player.Index]);
+				"Original working knockback"
+				Apply Impulse(Event Player.PlayersInBlastRadiusArray[Event Player.Index2], Vector Towards(
+					Event Player.StuckBombLocationsArray[Event Player.Index], Eye Position(
+					Event Player.PlayersInBlastRadiusArray[Event Player.Index2])), Event Player.DistanceFromBlastScalar * 4, To World,
+					Incorporate Contrary Motion);
+				Wait(0.025, Ignore Condition);
+				"Damage between 60 and 144 based on distance from grenade"
+				Damage(Event Player.PlayersInBlastRadiusArray[Event Player.Index2], Event Player, 60 + 30 * Event Player.DistanceFromBlastScalar);
+			End;
+			"Stickyjump Logic"
+			If(Distance Between(Event Player.StuckBombLocationsArray[Event Player.Index], Eye Position(Event Player)) <= 3.300);
+				Event Player.DistanceFromBlastScalar = 3.300 - Distance Between(Event Player,
+					Event Player.StuckBombLocationsArray[Event Player.Index]);
+				"Apply Vertical Thrust"
+				Apply Impulse(Event Player, Up, (Absolute Value(Y Component Of(Direction Towards(
+					Event Player.StuckBombLocationsArray[Event Player.Index], Event Player))) + 1) * 11, To World, Incorporate Contrary Motion);
+				"Apply Horizontal Thrust"
+				Apply Impulse(Event Player, Normalize(Vector Towards(Event Player.StuckBombLocationsArray[Event Player.Index], Event Player))
+					* Vector(1, 0, 1), 20 * (1 - Y Component Of(Normalize(Vector Towards(Event Player.StuckBombLocationsArray[Event Player.Index],
+					Event Player)))), To World, Incorporate Contrary Motion);
+				"Damage between 60 and 144 based on distance from grenade"
+				Damage(Event Player, Event Player, 30 + 25 * Event Player.DistanceFromBlastScalar);
+			End;
+		End;
+		Event Player.StuckBombsArray = Null;
+		Event Player.StuckBombLocationsArray = Null;
+	}
+}
+
+rule("Automatic Reloading (Pipebomb Launcher)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Junkrat;
+	}
+
+	conditions
+	{
+		Is Firing Primary(Event Player) == False;
+		Ammo(Event Player, 0) < 4;
+		Event Player.StickyOrFlaregunEquipped == False;
+	}
+
+	actions
+	{
+		Wait(1.240, Abort When False);
+		While(True);
+			Wait(0.600, Abort When False);
+			Set Ammo(Event Player, 0, Ammo(Event Player, 0) + 1);
+			Play Effect(Event Player, Brigitte Repair Pack Armor Sound, Color(White), Event Player, 100);
+		End;
+	}
+}
+
+rule("Automatic Reloading (Stickybomb Launcher)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Junkrat;
+	}
+
+	conditions
+	{
+		"Fire isn't held or ammo is depleted"
+		(Event Player.StickyAmmo == 0 || !Is Button Held(Event Player, Button(Primary Fire))) == True;
+		Event Player.StickyAmmo < 8;
+		Event Player.StickyOrFlaregunEquipped == True;
+	}
+
+	actions
+	{
+		Wait(1.020, Abort When False);
+		While(True);
+			Wait(0.670, Abort When False);
+			Play Effect(Event Player, Brigitte Repair Pack Armor Sound, Color(White), Event Player, 100);
+			Event Player.StickyAmmo += 1;
+		End;
+	}
+}
+
+rule("Junkrat dies, reset sticky ammo to 8 and disable damage from passive bombs")
+{
+	event
+	{
+		Player Died;
+		All;
+		Junkrat;
+	}
+
+	actions
+	{
+		Event Player.StickyAmmo = 8;
+		Set Damage Dealt(Event Player, 0);
+		"For each sticky"
+		For Player Variable(Event Player, Index, 1, Count Of(Event Player.StuckBombsArray) - 1, 1);
+			Destroy Effect(Event Player.StuckBombsArray[Event Player.Index]);
+		End;
+		Event Player.StuckBombsArray = Null;
+		Event Player.StuckBombLocationsArray = Null;
+	}
+}
+
+rule("Re-enable damage on respawn")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Junkrat;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, 83.400);
+	}
+}
+
+rule("Dealing damage charges ult, 600dmg = full charge ------- Soldier / Pharah -----------------------------------------")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Team Of(Victim) != Team Of(Event Player);
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + Event Damage * 0.168);
+	}
+}
+
+rule("Dying sets Buff Banner charge to zero")
+{
+	event
+	{
+		Player Died;
+		All;
+		Pharah;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, 0);
+	}
+}
+
+rule("Activate Buff Banner")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ultimate)) == True;
+		Ultimate Charge Percent(Event Player) == 100;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, 0);
+		Big Message(Event Player, Custom String("Sounding Buff Banner!"));
+		Play Effect(All Players(All Teams), Buff Explosion Sound, Color(White), Event Player, 100);
+		Set Primary Fire Enabled(Event Player, False);
+		Create Effect(All Players(All Teams), Cassidy Flashbang Stunned Effect, Color(Red), Event Player, 1, Position and Radius);
+		Event Player.BuffBannerEffectsArray[0] = Last Created Entity;
+		Wait(3, Ignore Condition);
+		Set Primary Fire Enabled(Event Player, True);
+		Destroy Effect(Event Player.BuffBannerEffectsArray[0]);
+		Create Effect(All Players(All Teams), Good Aura, Color(Orange), Event Player, 1, Position and Radius);
+		Event Player.BuffBannerEffectsArray[0] = Last Created Entity;
+		Event Player.BuffBannerActive = True;
+		"Apply damage buff 35% bonus"
+		Start Damage Modification(All Players(Opposite Team Of(Team Of(Event Player))), Players Within Radius(Eye Position(Event Player),
+			8.570, Team Of(Event Player), Off), 135, Receivers and Damagers);
+		Event Player.BuffBannerDamageModID = Last Damage Modification ID;
+		Wait(10, Ignore Condition);
+		Destroy Effect(Event Player.BuffBannerEffectsArray[0]);
+		Event Player.BuffBannerActive = False;
+		Stop Damage Modification(Event Player.BuffBannerDamageModID);
+	}
+}
+
+rule("Beam effect to Pharah")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		"A nearby player has a buff banner active"
+		Count Of(Filtered Array(Players Within Radius(Event Player, 8.570, Team Of(Event Player), Off),
+			Current Array Element.BuffBannerActive)) > 0;
+		"You do not have your own active buff banner"
+		Event Player.BuffBannerActive == False;
+	}
+
+	actions
+	{
+		Create Beam Effect(All Players(All Teams), Good Beam, Event Player, First Of(Filtered Array(Players On Hero(Hero(Pharah), Team Of(
+			Event Player)), Current Array Element.BuffBannerActive)), Color(Orange), Visible To Position and Radius);
+		Event Player.BuffBannerEffectsArray[0] = Last Created Entity;
+		Create Effect(All Players(All Teams), Good Aura, Color(Orange), Event Player, 1, Position and Radius);
+		Event Player.BuffBannerEffectsArray[1] = Last Created Entity;
+		Big Message(All Players(All Teams), Custom String("Buff banner active, dealing mini-crits"));
+		Wait Until(Count Of(Filtered Array(Players Within Radius(Event Player, 8.570, Team Of(Event Player), Off),
+			Current Array Element.BuffBannerActive)) == 0, 99999);
+		Destroy Effect(Event Player.BuffBannerEffectsArray[0]);
+		Destroy Effect(Event Player.BuffBannerEffectsArray[1]);
+	}
+}
+
+rule("Rocket Jump increased self-knockback")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Attacker == Event Player;
+	}
+
+	actions
+	{
+		"Apply Vertical Thrust"
+		Apply Impulse(Event Player, Y Component Of(Event Direction) < 0 ? Down : Up, (Absolute Value(Y Component Of(Event Direction)) + 1)
+			* 11, To World, Incorporate Contrary Motion);
+		"Apply Horizontal Thrust"
+		Apply Impulse(Event Player, Event Direction * Vector(1, 0, 1), 20 * (1 - Y Component Of(Normalize(Event Direction))), To World,
+			Incorporate Contrary Motion);
+	}
+}
+
+rule("Automatic Reloading")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Firing Primary(Event Player) == False;
+		Ammo(Event Player, 0) < 4;
+	}
+
+	actions
+	{
+		Wait(0.920, Abort When False);
+		While(Ammo(Event Player, 0) < 4);
+			Wait(0.800, Abort When False);
+			Set Ammo(Event Player, 0, Ammo(Event Player, 0) + 1);
+			Play Effect(Event Player, Brigitte Repair Pack Armor Sound, Color(White), Event Player, 100);
+		End;
+	}
+}
+
+rule("Press E to cycle buildables --------------------------------Engineer / Torbjorn ---------------------------------------")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 2)) == True;
+	}
+
+	actions
+	{
+		"Swap to none"
+		If(Event Player.BuildingEquipped == Custom String("Teleporter Exit (Cost: 50)"));
+			"Set BuildableEquipped to Wrench (0)"
+			Event Player.BuildingEquipped = Custom String("None");
+			"Hide ghost teleporter"
+			Destroy Effect(First Of(Event Player.BuildingArray));
+			"Hide rotation orientation icon"
+			Destroy In-World Text(Event Player.BuildingArray[6]);
+			"Re-enable weapons"
+			Set Primary Fire Enabled(Event Player, True);
+			Set Secondary Fire Enabled(Event Player, True);
+		Else If(Event Player.BuildingEquipped == Custom String("None"));
+			Event Player.BuildingEquipped = Custom String("Sentry Turret (Cost: 130)");
+			Event Player.BuildingRotation = Icon String(Arrow: Up);
+			"Create ghost Sentry (update every frame)"
+			Create Effect(Event Player, Sphere, Event Player.BuildingGhostColor, Update Every Frame(Ray Cast Hit Position(Eye Position(
+				Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(
+				Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True)
+				+ Vector(0, 0.450, 0)), 0.450, Position Radius and Color);
+			Event Player.BuildingArray[0] = Last Created Entity;
+			"Create Sentry range display"
+			Create Effect(Event Player, Sphere, Color(Red), Update Every Frame(Ray Cast Hit Position(Eye Position(Event Player) + Normalize(
+				Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(Facing Direction Of(
+				Event Player) * Vector(1, 0, 1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True) + Vector(0, 0.450, 0)),
+				20.950, Position and Radius);
+			Event Player.BuildingArray[5] = Last Created Entity;
+			"Create rotation orientation icon"
+			Create In-World Text(Event Player, Event Player.BuildingRotation, Update Every Frame(Ray Cast Hit Position(Eye Position(
+				Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(
+				Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True)
+				+ Vector(0, 0.450, 0)), 1.500, Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+			Event Player.BuildingArray[6] = Last Text ID;
+			"Disable weapons"
+			Set Primary Fire Enabled(Event Player, False);
+			Set Secondary Fire Enabled(Event Player, False);
+		Else If(Event Player.BuildingEquipped == Custom String("Sentry Turret (Cost: 130)"));
+			Event Player.BuildingEquipped = Custom String("Dispenser (Cost: 100)");
+			Destroy Effect(Event Player.BuildingArray[0]);
+			Destroy Effect(Event Player.BuildingArray[5]);
+			Destroy In-World Text(Event Player.BuildingArray[6]);
+			Create Effect(Event Player, Sphere, Event Player.BuildingGhostColor, Update Every Frame(Ray Cast Hit Position(Eye Position(
+				Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(
+				Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True)
+				+ Vector(0, 0.550, 0)), 0.550, Position Radius and Color);
+			Event Player.BuildingArray[0] = Last Created Entity;
+		Else If(Event Player.BuildingEquipped == Custom String("Dispenser (Cost: 100)"));
+			Event Player.BuildingEquipped = Custom String("Teleporter Entrance (Cost: 50)");
+			Destroy Effect(First Of(Event Player.BuildingArray));
+			Create Effect(Event Player, Ring, Event Player.BuildingGhostColor, Update Every Frame(Ray Cast Hit Position(Eye Position(
+				Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(
+				Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True)
+				+ Vector(0, 0.050, 0)), 0.550, Position Radius and Color);
+			Event Player.BuildingArray[0] = Last Created Entity;
+			"Create down icon for TP Entrance"
+			Create In-World Text(Event Player, Icon String(Arrow: Down), Update Every Frame(Ray Cast Hit Position(Eye Position(Event Player)
+				+ Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(
+				Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True)
+				+ Vector(0, 0.050, 0)), 1.500, Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+			Event Player.BuildingArray[6] = Last Text ID;
+		Else If(Event Player.BuildingEquipped == Custom String("Teleporter Entrance (Cost: 50)"));
+			Event Player.BuildingEquipped = Custom String("Teleporter Exit (Cost: 50)");
+			Event Player.BuildingRotation = Icon String(Arrow: Up);
+			"Hide rotation orientation icon"
+			Destroy In-World Text(Event Player.BuildingArray[6]);
+			"Create rotation orientation icon"
+			Create In-World Text(Event Player, Event Player.BuildingRotation, Update Every Frame(Ray Cast Hit Position(Eye Position(
+				Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(
+				Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True)
+				+ Vector(0, 0.050, 0)), 1.500, Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+			Event Player.BuildingArray[6] = Last Text ID;
+		End;
+	}
+}
+
+rule("Shift to change building rotation")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+		(Event Player.BuildingEquipped == Custom String("Sentry Turret (Cost: 130)") || Event Player.BuildingEquipped == Custom String(
+			"Teleporter Exit (Cost: 50)")) == True;
+	}
+
+	actions
+	{
+		If(Event Player.BuildingRotation == Icon String(Arrow: Up));
+			Event Player.BuildingRotation = Icon String(Arrow: Right);
+		Else If(Event Player.BuildingRotation == Icon String(Arrow: Right));
+			Event Player.BuildingRotation = Icon String(Arrow: Down);
+		Else If(Event Player.BuildingRotation == Icon String(Arrow: Down));
+			Event Player.BuildingRotation = Icon String(Arrow: Left);
+		Else If(Event Player.BuildingRotation == Icon String(Arrow: Left));
+			Event Player.BuildingRotation = Icon String(Arrow: Up);
+		End;
+	}
+}
+
+rule("Check if current build location is valid")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		"Player must not be in spawn room"
+		Is In Spawn Room(Event Player) == False;
+		Event Player.BuildingEquipped != Custom String("None");
+		"2.5m raycast in front of player must not hit anything"
+		Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Normalize(Facing Direction Of(Event Player)
+			* Vector(1, 0, 1)) * 2.750, All Players(All Teams), Event Player, True) == Eye Position(Event Player) + Normalize(
+			Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2.750;
+		Ray Cast Hit Position(Eye Position(Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2.600,
+			Eye Position(Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2.600 + Vector(0, -2.500, 0),
+			All Players(All Teams), Event Player, True) != Eye Position(Event Player) + Normalize(Facing Direction Of(Event Player)
+			* Vector(1, 0, 1)) * 2.600 + Vector(0, -2.500, 0);
+	}
+
+	actions
+	{
+		Event Player.BuildingGhostColor = Color(Green);
+		Wait Until(Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Normalize(Facing Direction Of(
+			Event Player) * Vector(1, 0, 1)) * 2.750, All Players(All Teams), Event Player, True) != Eye Position(Event Player)
+			+ Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2.750 || Ray Cast Hit Position(Eye Position(Event Player)
+			+ Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2.600, Eye Position(Event Player) + Normalize(
+			Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2.600 + Vector(0, -2.500, 0), All Players(All Teams), Event Player,
+			True) == Eye Position(Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0, 1)) * 2.600 + Vector(0,
+			-2.500, 0) || Is In Spawn Room(Event Player) || Event Player.BuildingEquipped == 0, 99999);
+		Event Player.BuildingGhostColor = Color(Red);
+	}
+}
+
+rule("Press LMB to build")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.BuildingEquipped != Custom String("None");
+		disabled Is On Ground(Event Player) == True;
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Event Player.BuildingGhostColor == Color(Green);
+		"No longer needed since check included in GhostColor"
+		disabled Is In Spawn Room(Event Player) == False;
+	}
+
+	actions
+	{
+		"Building Sentry"
+		If(Event Player.BuildingEquipped == Custom String("Sentry Turret (Cost: 130)") && Event Player.EngineerMetal >= 130);
+			Call Subroutine(SwitchToWeapons);
+			"Clear ghost sentry and range indicator"
+			Destroy Effect(Event Player.BuildingArray[0]);
+			Destroy Effect(Event Player.BuildingArray[5]);
+			Destroy In-World Text(Event Player.BuildingArray[6]);
+			"Deduct 130 metal"
+			Event Player.EngineerMetal -= 130;
+			Call Subroutine(DestroySentry);
+			"Switch back to weapons"
+			Press Button(Event Player, Button(Ability 1));
+			Call Subroutine(InitializeSentry);
+		"Building Dispenser"
+		Else If(Event Player.BuildingEquipped == Custom String("Dispenser (Cost: 100)") && Event Player.EngineerMetal >= 100);
+			Call Subroutine(SwitchToWeapons);
+			Call Subroutine(DestroyDispenser);
+			"Clear ghost dispenser"
+			Destroy Effect(Event Player.BuildingArray[0]);
+			"Deduct 100 metal"
+			Event Player.EngineerMetal -= 100;
+			Call Subroutine(InitializeDispenser);
+			"Switch back to weapons"
+			Press Button(Event Player, Button(Ability 1));
+		"Building TP Entrance"
+		Else If(Event Player.BuildingEquipped == Custom String("Teleporter Entrance (Cost: 50)") && Event Player.EngineerMetal >= 50);
+			Call Subroutine(SwitchToWeapons);
+			"Clear ghost TP"
+			Destroy Effect(Event Player.BuildingArray[0]);
+			"Deduct 50 metal"
+			Event Player.EngineerMetal -= 50;
+			Call Subroutine(DestroyTPEntrance);
+			Call Subroutine(InitializeTPEntrance);
+			"Switch back to weapons"
+			Press Button(Event Player, Button(Ability 1));
+		"Building TP Exit"
+		Else If(Event Player.BuildingEquipped == Custom String("Teleporter Exit (Cost: 50)") && Event Player.EngineerMetal >= 50);
+			Call Subroutine(SwitchToWeapons);
+			"Clear ghost TP"
+			Destroy Effect(Event Player.BuildingArray[0]);
+			Destroy In-World Text(Event Player.BuildingArray[6]);
+			"Deduct 50 metal"
+			Event Player.EngineerMetal -= 50;
+			Call Subroutine(DestroyTPExit);
+			Call Subroutine(InitializeTPExit);
+			"Switch back to weapons"
+			Press Button(Event Player, Button(Ability 1));
+		"If nothing was built due to not enough metal"
+		Else;
+			Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 50);
+			Big Message(Event Player, Custom String("Not Enough Metal!"));
+		End;
+	}
+}
+
+rule("On weapon switch, re-enable weapons")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Weapon(Event Player) != Event Player.TorbEquippedWeapon;
+	}
+
+	actions
+	{
+		Call Subroutine(SwitchToWeapons);
+		Event Player.TorbEquippedWeapon = Weapon(Event Player);
+	}
+}
+
+rule("Switch to Weapons (Subroutine)")
+{
+	event
+	{
+		Subroutine;
+		SwitchToWeapons;
+	}
+
+	actions
+	{
+		"Set BuildableEquipped to Wrench (0)"
+		Event Player.BuildingEquipped = Custom String("None");
+		"Hide ghost building"
+		Destroy Effect(Event Player.BuildingArray[0]);
+		"Hide ghost range indicator"
+		Destroy Effect(Event Player.BuildingArray[5]);
+		Destroy In-World Text(Event Player.BuildingArray[6]);
+		"Re-enable weapons"
+		Set Primary Fire Enabled(Event Player, True);
+		Set Secondary Fire Enabled(Event Player, True);
+	}
+}
+
+rule("Dispenser - Resupply Engie Metal when nearby")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Distance Between(Eye Position(Event Player), Event Player.BuildingLocationsArray[2]) <= 5;
+		Event Player.DispenserMetal > 0;
+		Event Player.EngineerMetal < 200;
+	}
+
+	actions
+	{
+		Wait(1, Abort When False);
+		Play Effect(All Players(All Teams), Brigitte Repair Pack Armor Sound, Color(White), Event Player, 100);
+		"If not enough metal in Dispenser for a full tick"
+		If(Event Player.DispenserMetal < 30 + Event Player.BuildingLevelArray[2] * 10);
+			"If player does not have enough room for tick"
+			If(Event Player.DispenserMetal >= 200 - Event Player.EngineerMetal);
+				"Take metal out of disp equal to available player space"
+				Event Player.DispenserMetal -= 200 - Event Player.EngineerMetal;
+				"Set player metal to max"
+				Event Player.EngineerMetal = 200;
+			"If player does have room for reduced tick"
+			Else;
+				"Add all metal to engie's metal"
+				Event Player.EngineerMetal += Event Player.DispenserMetal;
+				"Set disp metal to zero"
+				Event Player.DispenserMetal = 0;
+			End;
+		"If dispenser contains enough for a full tick"
+		Else;
+			"If player does not have enough room for full tick"
+			If(30 + Event Player.BuildingLevelArray[2] * 10 >= 200 - Event Player.EngineerMetal);
+				"Take metal out of disp equal to available player space"
+				Event Player.DispenserMetal -= 200 - Event Player.EngineerMetal;
+				"Set player metal to max"
+				Event Player.EngineerMetal = 200;
+			"If player does have room for full tick"
+			Else;
+				"Add full tick to engie's metal"
+				Event Player.EngineerMetal += 30 + 10 * Event Player.BuildingLevelArray[2];
+				"Subtract full tick from Disp metal"
+				Event Player.DispenserMetal -= 30 + 10 * Event Player.BuildingLevelArray[2];
+			End;
+		End;
+		Loop If Condition Is True;
+	}
+}
+
+rule("Sentry Turret - Aim when targets are in range")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		"There is at least 1 player within 20m of Bastion with LOS (Do not target Cassidy)"
+		Count Of(Filtered Array(Filtered Array(Players Within Radius(Eye Position(Event Player), 20.950, Opposite Team Of(Team Of(
+			Event Player)), Surfaces), Is Alive(Current Array Element)), Hero Of(Current Array Element) != Hero(Cassidy))) > 0;
+		"Closest Player to Bastion (with LOS) is not already the SentryTarget (Do not target Cassidy)"
+		First Of(Sorted Array(Filtered Array(Filtered Array(All Living Players(Opposite Team Of(Team Of(Event Player))), Hero Of(
+			Current Array Element) != Hero(Cassidy)), Is In Line of Sight(Eye Position(Event Player), Eye Position(Current Array Element),
+			Barriers Do Not Block LOS)), Distance Between(Eye Position(Event Player), Eye Position(Current Array Element))))
+			!= Event Player.SentryTarget;
+		"Not Frozen or Stunned"
+		Has Status(Event Player, Frozen) == False;
+		Has Status(Event Player, Stunned) == False;
+		disabled Event Player.BotOwner.SentryCompletion == 100;
+		Event Player.BotOwner.SentryCompletion == 100;
+	}
+
+	actions
+	{
+		Stop Facing(Event Player);
+		disabled Event Player.SentryTarget = First Of(Sorted Array(Filtered Array(All Living Players(Opposite Team Of(Team Of(Event Player))),
+			Is In Line of Sight(Eye Position(Event Player), Eye Position(Current Array Element), Barriers Do Not Block LOS)),
+			Distance Between(Eye Position(Event Player), Eye Position(Current Array Element))));
+		Event Player.SentryTarget = First Of(Sorted Array(Filtered Array(Filtered Array(All Living Players(Opposite Team Of(Team Of(
+			Event Player))), Hero Of(Current Array Element) != Hero(Cassidy)), Is In Line of Sight(Eye Position(Event Player),
+			Eye Position(Current Array Element), Barriers Do Not Block LOS)), Distance Between(Eye Position(Event Player), Eye Position(
+			Current Array Element))));
+		Start Facing(Event Player, Vector Towards(Eye Position(Event Player), Eye Position(Event Player.SentryTarget)), 210, To World,
+			Direction and Turn Rate);
+		disabled Global.A = Sorted Array(Filtered Array(All Living Players(Opposite Team Of(Team Of(Event Player))), Is In Line of Sight(
+			Eye Position(Event Player), Eye Position(Current Array Element), Barriers Do Not Block LOS)), Distance Between(Eye Position(
+			Event Player), Eye Position(Current Array Element)));
+		disabled Global.A = Sorted Array(Filtered Array(All Living Players(Opposite Team Of(Team Of(Event Player))), Is In Line of Sight(
+			Eye Position(Event Player), Eye Position(Current Array Element), Barriers Do Not Block LOS)), Distance Between(Eye Position(
+			Event Player), Eye Position(Current Array Element)));
+	}
+}
+
+rule("Sentry Turret - Fire guns when target in crosshairs")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Event Player.SentryTarget != Null;
+		Has Status(Event Player, Frozen) == False;
+		Has Status(Event Player, Stunned) == False;
+		"If target is within 3 degrees of center of view\r\n@Condition eventPlayer.isInViewAngle(eventPlayer.SentryTarget.getEyePosition(), 10) == true"
+		Angle Between Vectors(Facing Direction Of(Event Player), Direction Towards(Eye Position(Event Player), Eye Position(
+			Event Player.SentryTarget))) <= 1;
+		Event Player.BotOwner.SentryCompletion == True;
+	}
+
+	actions
+	{
+		Start Holding Button(Event Player, Button(Primary Fire));
+		"If level 3"
+		disabled If(Players On Hero(Hero(Torbjörn), Team Of(Event Player)).BuildingLevelArray[1] == 3);
+		disabled Stop Facing(Event Player.Bot2);
+		disabled Set Facing(Event Player.Bot2, Direction Towards(Eye Position(Event Player.Bot2), Eye Position(Event Player.SentryTarget)),
+			To World);
+		disabled Wait(0.016, Ignore Condition);
+		"Fire Rockets"
+		disabled Press Button(Event Player.Bot2, Button(Secondary Fire));
+		disabled End;
+	}
+}
+
+rule("Sentry Turret - Lv3 Fire rockets")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Event Player.SentryTarget != Null;
+		Has Status(Event Player, Frozen) == False;
+		Has Status(Event Player, Stunned) == False;
+		"If target is within 3 degrees of center of view\r\n@Condition eventPlayer.isInViewAngle(eventPlayer.SentryTarget.getEyePosition(), 10) == true"
+		Angle Between Vectors(Facing Direction Of(Event Player), Direction Towards(Eye Position(Event Player), Eye Position(
+			Event Player.SentryTarget))) <= 1;
+		"Sentry is lv3"
+		Players On Hero(Hero(Torbjörn), Team Of(Event Player)).BuildingLevelArray[1] == 3;
+		Event Player.SentryRocketCooldown == 0;
+	}
+
+	actions
+	{
+		Stop Facing(Event Player.Bot2);
+		Set Facing(Event Player.Bot2, Direction Towards(Eye Position(Event Player.Bot2), Eye Position(Event Player.SentryTarget)),
+			To World);
+		Wait(0.016, Ignore Condition);
+		"Fire Rockets"
+		Press Button(Event Player.Bot2, Button(Secondary Fire));
+		Event Player.SentryRocketCooldown = 3.060;
+		Chase Player Variable At Rate(Event Player, SentryRocketCooldown, 0, 1, None);
+	}
+}
+
+rule("Sentry Turret - Stop firing when target not in crosshairs")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		"If target is within 3 degrees of center of view"
+		disabled Is In View Angle(Event Player, Eye Position(Event Player.SentryTarget), 10) == False;
+		Angle Between Vectors(Facing Direction Of(Event Player), Direction Towards(Eye Position(Event Player), Eye Position(
+			Event Player.SentryTarget))) > 1;
+	}
+
+	actions
+	{
+		Stop Holding Button(Event Player, Button(Primary Fire));
+	}
+}
+
+rule("Sentry Turret - Return to default facing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		"If frozen, stunned, or no targets in range (Ignoring Cassidy)"
+		(Has Status(Event Player, Frozen) || Has Status(Event Player, Stunned) || Count Of(Filtered Array(Filtered Array(
+			Players Within Radius(Eye Position(Event Player), 20.950, Opposite Team Of(Team Of(Event Player)), Surfaces), Is Alive(
+			Current Array Element)), Hero Of(Current Array Element) != Hero(Cassidy))) == 0) == True;
+		"If frozen, stunned, or no targets in range"
+		disabled (Has Status(Event Player, Frozen) || Has Status(Event Player, Stunned) || Count Of(Filtered Array(Filtered Array(
+			Players Within Radius(Eye Position(Event Player), 20.950, Opposite Team Of(Team Of(Event Player)), Surfaces), Is Alive(
+			Current Array Element)), Is In Line of Sight(Eye Position(Event Player), Current Array Element, Barriers Do Not Block LOS)))
+			== 0) == True;
+		Event Player.BotOwner.SentryCompletion == 100;
+	}
+
+	actions
+	{
+		Stop Holding Button(Event Player, Button(Primary Fire));
+		Stop Facing(Event Player);
+		Start Facing(Event Player, Event Player.BotOwner.BastionDefaultFacing, 100, To World, None);
+		Event Player.SentryTarget = Null;
+	}
+}
+
+rule("Teleporter - teleport player standing on entrance")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Count Of(Players Within Radius(Event Player.BuildingLocationsArray[3], 0.500, Team Of(Event Player), Off)) > 0;
+		Event Player.TeleporterCharge == 100;
+		Throttle Of(Closest Player To(Event Player.BuildingLocationsArray[3], Team Of(Event Player))) == Vector(0, 0, 0);
+	}
+
+	actions
+	{
+		Wait(0.500, Abort When False);
+		Event Player.PlayerTeleported = Closest Player To(Event Player.BuildingLocationsArray[3], Team Of(Event Player));
+		Play Effect(All Players(All Teams), Ring Explosion, Color(Blue), Event Player.BuildingLocationsArray[3], 1.300);
+		Play Effect(All Players(All Teams), Moira Fade Disappear Sound, Color(White), Event Player.BuildingLocationsArray[3], 100);
+		Teleport(Closest Player To(Event Player.BuildingLocationsArray[3], Team Of(Event Player)), Event Player.BuildingLocationsArray[4]);
+		Set Facing(Event Player, Event Player.TPExitFacing, To World);
+		Play Effect(All Players(All Teams), Moira Fade Reappear Sound, Color(White), Event Player.BuildingLocationsArray[4], 100);
+		Play Effect(All Players(All Teams), Ring Explosion, Color(Blue), Event Player.BuildingLocationsArray[4], 1.300);
+		Event Player.TeleporterCharge = 0;
+		Event Player.TPUses += 1;
+		Event Player.TPColor = Color(Yellow);
+	}
+}
+
+disabled rule("Press Shift to return to weapons")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+	}
+
+	actions
+	{
+		"Set BuildableEquipped to Wrench (0)"
+		Event Player.BuildingEquipped = 0;
+		"Swap HUD text to \"Sentry Turret\""
+		Destroy HUD Text(Event Player.EquippedWeaponHUDText[0]);
+		Create HUD Text(Event Player, Custom String("Weapons"), Null, Null, Top, 1, Color(Orange), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Event Player.EquippedWeaponHUDText[0] = Last Text ID;
+		"Hide ghost building"
+		Destroy Effect(Event Player.BuildingArray[0]);
+		"Hide ghost range indicator"
+		Destroy Effect(Event Player.BuildingArray[5]);
+		"Re-enable weapons"
+		Set Primary Fire Enabled(Event Player, True);
+		Set Secondary Fire Enabled(Event Player, True);
+	}
+}
+
+rule("Restock Metal in Spawn Room")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Is In Spawn Room(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.EngineerMetal = 200;
+	}
+}
+
+rule("Teleporter - Ready (Turn Green)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.TeleporterCharge == 100;
+	}
+
+	actions
+	{
+		Event Player.TPColor = Color(Green);
+	}
+}
+
+rule("Spawn metal pickup on death")
+{
+	event
+	{
+		Player Died;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Hero Being Played(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))) == True;
+	}
+
+	actions
+	{
+		"Changed this to EvaluateOnce"
+		disabled Modify Player Variable(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))), MetalSpawnLocations,
+			Append To Array, Position Of(Event Player));
+		"Add dead player location to MetalSpawnLocations array"
+		Modify Player Variable(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))), MetalSpawnLocations,
+			Append To Array, Evaluate Once(Nearest Walkable Position(Position Of(Event Player))));
+		"Create Metal Text"
+		Create In-World Text(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))), Custom String("100 Metal"), Last Of(
+			Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))).MetalSpawnLocations), 1, Do Not Clip,
+			Visible To Position and String, Color(Gray), Default Visibility);
+		"Create orb at dead player location"
+		Create Effect(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))), Orb, Color(Gray), Last Of(Players On Hero(
+			Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))).MetalSpawnLocations), 1, None);
+		"Save orb to MetalSpawnEffects array"
+		Modify Player Variable(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))), MetalSpawnEffects,
+			Append To Array, Last Created Entity);
+		"Reset and count time since last Metal Spawn"
+		Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))).MetalSpawnTimers = 0;
+		Chase Player Variable At Rate(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))), MetalSpawnTimers, 30, 1,
+			None);
+	}
+}
+
+rule("Pick up metal when close")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Count Of(Filtered Array(Event Player.MetalSpawnLocations, Distance Between(Current Array Element, Position Of(Event Player)) <= 1))
+			>= 1;
+		Event Player.EngineerMetal < 200;
+		Event Player.MetalSpawnLocations != Null;
+	}
+
+	actions
+	{
+		Event Player.Index = Index Of Array Value(Event Player.MetalSpawnLocations, Filtered Array(Event Player.MetalSpawnLocations,
+			Distance Between(Event Player, Current Array Element) <= 1)[0]);
+		Destroy Effect(Event Player.MetalSpawnEffects[Event Player.Index]);
+		Modify Player Variable(Event Player, MetalSpawnLocations, Remove From Array By Index, Event Player.Index);
+		Modify Player Variable(Event Player, MetalSpawnEffects, Remove From Array By Index, Event Player.Index);
+		If(Event Player.EngineerMetal >= 100);
+			Event Player.EngineerMetal = 200;
+		Else;
+			Event Player.EngineerMetal += 100;
+		End;
+		Play Effect(Event Player, Buff Impact Sound, Color(White), Event Player, 100);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Destroy metal pickup after 30s")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.MetalSpawnTimers >= 15;
+	}
+
+	actions
+	{
+		For Player Variable(Event Player, Index, 0, Count Of(Event Player.MetalSpawnEffects), 1);
+			Destroy Effect(Event Player.MetalSpawnEffects[Event Player.Index]);
+		End;
+		Event Player.MetalSpawnLocations = Empty Array;
+		Event Player.MetalSpawnEffects = Empty Array;
+	}
+}
+
+rule("Attack Dispenser by looking at it")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is In View Angle(Event Player, Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player)))
+			.BuildingLocationsArray[2] + Down, 5) == True;
+		Is In Line of Sight(Eye Position(Event Player), Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player)))
+			.BuildingLocationsArray[2] + Vector(0, 0, 0), Barriers Do Not Block LOS) == True;
+		Event Player.BuildingAttackBeam == Null;
+		Event Player.Invisible == False;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Create Beam Effect(All Players(All Teams), Bad Beam, Event Player, Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(
+			Event Player))).BuildingLocationsArray[2], Color(Red), Position and Radius);
+		Event Player.BuildingAttackBeam[0] = Last Created Entity;
+		Create Progress Bar In-World Text(Event Player, Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player)))
+			.DispenserHP, Custom String("Enemy Dispenser HP"), Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player)))
+			.BuildingLocationsArray[2] + Vector(0, 0.750, 0), 1, Do Not Clip, Color(Red), Color(Red), Values, Default Visibility);
+		Event Player.BuildingAttackBeam[1] = Last Text ID;
+		Chase Player Variable At Rate(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))), DispenserHP, 0,
+			43 - Distance Between(Eye Position(Event Player), Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player)))
+			.BuildingLocationsArray[2]), Destination and Rate);
+		"chase(getPlayersOnHero(Hero.TORBJORN, getOppositeTeam(eventPlayer.getTeam())).DispenserHP, 0, rate=50, ChaseReeval.NONE)"
+		Wait Until(!Is In View Angle(Event Player, Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player)))
+			.BuildingLocationsArray[2] + Down, 5) || !Is In Line of Sight(Eye Position(Event Player), Players On Hero(Hero(Torbjörn),
+			Opposite Team Of(Team Of(Event Player))).BuildingLocationsArray[2], Barriers Do Not Block LOS) || Is Dead(Event Player),
+			99999);
+		Destroy Effect(First Of(Event Player.BuildingAttackBeam));
+		Destroy Progress Bar In-World Text(Event Player.BuildingAttackBeam[1]);
+		Stop Chasing Player Variable(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))), DispenserHP);
+		Event Player.BuildingAttackBeam = Null;
+		"If dispenser isn't completely built nor destroyed"
+		If(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))).DispenserCompletion != 100 && Players On Hero(Hero(
+			Torbjörn), Opposite Team Of(Team Of(Event Player))).DispenserCompletion != 0);
+			"Continue construction heal over time"
+			Chase Player Variable At Rate(Players On Hero(Hero(Torbjörn), Opposite Team Of(Team Of(Event Player))), DispenserHP, 100, 4.714,
+				None);
+	}
+}
+
+rule("Sentry runs out of HP")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Is Dead(Event Player.Bot1) == True;
+	}
+
+	actions
+	{
+		Call Subroutine(DestroySentry);
+	}
+}
+
+rule("Dispenser runs out of HP")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.DispenserHP <= 0;
+	}
+
+	actions
+	{
+		Call Subroutine(DestroyDispenser);
+	}
+}
+
+rule("TPEntrance runs out of HP")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.TPEntranceHP <= 0;
+	}
+
+	actions
+	{
+		Call Subroutine(DestroyTPEntrance);
+	}
+}
+
+rule("TPExit runs out of HP")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.TPExitHP <= 0;
+	}
+
+	actions
+	{
+		Call Subroutine(DestroyTPExit);
+	}
+}
+
+rule("Destroy Sentry (Subroutine)")
+{
+	event
+	{
+		Subroutine;
+		DestroySentry;
+	}
+
+	actions
+	{
+		"Play sound"
+		Play Effect(All Players(All Teams), Junkrat RIP Tire Explosion Sound, Color(White), Event Player.BuildingLocationsArray[1], 100);
+		Destroy In-World Text(Event Player.SentryText[0]);
+		Destroy In-World Text(Event Player.SentryText[1]);
+		Destroy Progress Bar HUD Text(Event Player.SentryText[5]);
+		Event Player.SentryCompletion = Null;
+		Event Player.UpgradeProgressArray[1] = Null;
+		Event Player.BuildingLevelArray[1] = Null;
+		Event Player.BuildingLocationsArray[1] = Null;
+		If(Event Player.Bot1 != Null);
+			Destroy Dummy Bot(Team Of(Event Player), Slot Of(Event Player.Bot1));
+			Event Player.Bot1 = Null;
+		End;
+		If(Event Player.Bot2 != Null);
+			Destroy Dummy Bot(Team Of(Event Player), Slot Of(Event Player.Bot2));
+			Event Player.Bot2 = Null;
+		End;
+	}
+}
+
+rule("Destroy Dispenser (subroutine)")
+{
+	event
+	{
+		Subroutine;
+		DestroyDispenser;
+	}
+
+	actions
+	{
+		"Play sound"
+		Play Effect(All Players(All Teams), Junkrat RIP Tire Explosion Sound, Color(White), Event Player.BuildingLocationsArray[2], 100);
+		"Clear beams/healing over time"
+		disabled For Player Variable(Event Player, Index, 0, Count Of(All Players(Team Of(Event Player))) - 1, 1);
+		disabled Stop Heal Over Time(Players In Slot(Event Player.Index, Team Of(Event Player)).DispenserHealOverTime);
+		disabled Destroy Effect(Players In Slot(Event Player.Index, Team Of(Event Player)).DispenserBeamEffect);
+		"Reset all variable arrays"
+		disabled Players In Slot(Event Player.Index, Team Of(Event Player)).DispenserBeamEffect = Null;
+		disabled Players In Slot(Event Player.Index, Team Of(Event Player)).DispenserHealOverTime = Null;
+		disabled End;
+		"Destroy Dispenser Effect"
+		Destroy Effect(Event Player.BuildingArray[2]);
+		Event Player.DispenserCompletion = 0;
+		Destroy Progress Bar HUD Text(Event Player.DispenserText[5]);
+		Destroy In-World Text(Event Player.DispenserText[0]);
+		Destroy In-World Text(Event Player.DispenserText[1]);
+		Destroy In-World Text(Event Player.DispenserText[2]);
+		Destroy In-World Text(Event Player.DispenserText[3]);
+		Destroy In-World Text(Event Player.DispenserText[4]);
+		Event Player.BuildingLevelArray[2] = Null;
+		Event Player.UpgradeProgressArray[2] = 0;
+		Event Player.BuildingLocationsArray[2] = Null;
+		Event Player.DispenserHP = 0;
+	}
+}
+
+rule("Destroy TPEntrance (subroutine)")
+{
+	event
+	{
+		Subroutine;
+		DestroyTPEntrance;
+	}
+
+	actions
+	{
+		"Destroy Dispenser Sphere"
+		Destroy Effect(Event Player.BuildingArray[3]);
+		"Destroy HUD Metal readout and floating world text"
+		Destroy Progress Bar HUD Text(Event Player.TPEntranceText[5]);
+		Destroy In-World Text(Event Player.TPEntranceText[0]);
+		Destroy In-World Text(Event Player.TPEntranceText[1]);
+		Destroy In-World Text(Event Player.TPEntranceText[2]);
+		"Clear \"Charge\" text from exit"
+		Destroy In-World Text(Event Player.TPExitText[2]);
+		"Reset values for upgrade progress and build completion"
+		Event Player.TPEntranceCompletion = 0;
+		Event Player.UpgradeProgressArray[0] = 0;
+		Event Player.BuildingLocationsArray[3] = Null;
+		Event Player.BuildingLevelArray[3] = 1;
+		Event Player.BuildingArray[3] = Null;
+		Stop Chasing Player Variable(Event Player, TeleporterCharge);
+		Event Player.TeleporterCharge = Null;
+		Event Player.TPEntranceText = Null;
+		Event Player.TPEntranceHP = 0.100;
+		Event Player.TPUses = 0;
+		If(Event Player.TPExitCompletion == 100);
+			Destroy In-World Text(Event Player.TPExitText[1]);
+			Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[4], 6, Team Of(Event Player), Off), Custom String(
+				"Upgrade: {0} / 200", Event Player.UpgradeProgressArray[3]), Vector(X Component Of(Event Player.BuildingLocationsArray[4]),
+				0.350 + Y Component Of(Event Player.BuildingLocationsArray[4]), Z Component Of(Event Player.BuildingLocationsArray[4])), 1,
+				Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+			Event Player.TPExitText[1] = Last Text ID;
+	}
+}
+
+rule("Destroy TPExit (subroutine)")
+{
+	event
+	{
+		Subroutine;
+		DestroyTPExit;
+	}
+
+	actions
+	{
+		"Destroy Dispenser Sphere"
+		Destroy Effect(Event Player.BuildingArray[4]);
+		"Destroy HUD Metal readout and floating world text"
+		Destroy Progress Bar HUD Text(Event Player.TPExitText[5]);
+		Destroy In-World Text(Event Player.TPExitText[0]);
+		Destroy In-World Text(Event Player.TPExitText[1]);
+		Destroy In-World Text(Event Player.TPExitText[2]);
+		"Clear \"charge\" text from entrance"
+		Destroy In-World Text(Event Player.TPEntranceText[2]);
+		"Reset values for upgrade progress and build completion"
+		Event Player.TPExitCompletion = 0;
+		Event Player.UpgradeProgressArray[3] = Null;
+		Event Player.BuildingLocationsArray[4] = Null;
+		Event Player.BuildingLevelArray[3] = 1;
+		Event Player.BuildingArray[4] = Null;
+		Stop Chasing Player Variable(Event Player, TeleporterCharge);
+		Event Player.TeleporterCharge = Null;
+		Event Player.TPExitText = Null;
+		Event Player.TPExitHP = 0.100;
+		Event Player.TPUses = 0;
+	}
+}
+
+rule("InitializeSentry (subroutine)")
+{
+	event
+	{
+		Subroutine;
+		InitializeSentry;
+	}
+
+	actions
+	{
+		If(Event Player.BuildingRotation == Icon String(Arrow: Up));
+			Event Player.BastionDefaultFacing = World Vector Of(Vector(0, 0, 1), Event Player, Rotation);
+		Else If(Event Player.BuildingRotation == Icon String(Arrow: Right));
+			Event Player.BastionDefaultFacing = World Vector Of(Vector(-1, 0, 0), Event Player, Rotation);
+		Else If(Event Player.BuildingRotation == Icon String(Arrow: Down));
+			Event Player.BastionDefaultFacing = World Vector Of(Vector(0, 0, -1), Event Player, Rotation);
+		Else If(Event Player.BuildingRotation == Icon String(Arrow: Left));
+			Event Player.BastionDefaultFacing = World Vector Of(Vector(1, 0, 0), Event Player, Rotation);
+		End;
+		"Sentry Level = 1"
+		Event Player.BuildingLevelArray[1] = 1;
+		"Set upgrade progress to 0"
+		Event Player.UpgradeProgressArray[1] = 0;
+		Create Dummy Bot(Hero(Bastion), Team Of(Event Player), -1, Event Player + Facing Direction Of(Event Player) * Vector(2, 0, 2)
+			+ Vector(0, 0, 0), Event Player.BastionDefaultFacing);
+		Event Player.Bot1 = Last Created Entity;
+		Wait(0.016, Ignore Condition);
+		Event Player.Bot1.BotOwner = Event Player;
+		Start Scaling Player(Event Player.Bot1, 0.500, False);
+		Start Forcing Dummy Bot Name(Event Player.Bot1, Custom String("{0}'s Sentry", Event Player));
+		Remove All Health Pools From Player(Players On Hero(Hero(Bastion), Team Of(Event Player)));
+		"Set Lastconstruction to 1 (Sentry)"
+		Event Player.LastConstruction = 1;
+		"Setup Progress Meter with 10.5s build time"
+		Event Player.SentryCompletion = 0;
+		Chase Player Variable At Rate(Event Player, SentryCompletion, 100, 9.524, None);
+		Wait(0.500, Ignore Condition);
+		Add Health Pool To Player(Event Player.Bot1, Health, Event Player.SentryCompletion * 1.470, True, True);
+		Start Heal Over Time(Players On Hero(Hero(Bastion), Team Of(Event Player)), Null, 9999, 15);
+		Create Progress Bar HUD Text(Event Player, Health(Players On Hero(Hero(Bastion), Team Of(Event Player))) / 1.500, Custom String(
+			"Lv1 Sentry HP: {0}", Round To Integer(Health(Players On Hero(Hero(Bastion), Team Of(Event Player))), Up),
+			Number Of Final Blows(Event Player.Bot1)), Right, 0, Color(White), Color(White), Values, Default Visibility);
+		Event Player.SentryText[5] = Last Text ID;
+		"Add location to buildingLocationsArray"
+		Event Player.BuildingLocationsArray[1] = Eye Position(Event Player.Bot1);
+		"Add world text"
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[1], 6, Team Of(Event Player), Off), Custom String(
+			"{0}'s Lv{1} Sentry", Event Player, Event Player.BuildingLevelArray[1]), Event Player.BuildingLocationsArray[1] + Vector(0,
+			-0.400, 0), 1, Do Not Clip, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.SentryText[0] = Last Text ID;
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[1], 6, Team Of(Event Player), Off), Custom String(
+			"Building: {0}%", Event Player.SentryCompletion), Vector(X Component Of(Event Player.BuildingLocationsArray[1]),
+			-0.490 + Y Component Of(Event Player.BuildingLocationsArray[1]), Z Component Of(Event Player.BuildingLocationsArray[1])), 1,
+			Do Not Clip, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.SentryText[1] = Last Text ID;
+		Set Ability 1 Enabled(Event Player.Bot1, True);
+		Press Button(Event Player.Bot1, Button(Ability 1));
+		"Wait for transformation to complete"
+		Wait(1, Ignore Condition);
+		Set Status(Event Player.Bot1, Null, Frozen, 10.500);
+		Event Player.Bot1 = Players On Hero(Hero(Bastion), Team Of(Event Player));
+	}
+}
+
+rule("Initialize Dispenser (Subroutine)")
+{
+	event
+	{
+		Subroutine;
+		InitializeDispenser;
+	}
+
+	actions
+	{
+		"Dispenser Level = 1"
+		Event Player.BuildingLevelArray[2] = 1;
+		"Set upgrade progress to 0"
+		Event Player.UpgradeProgressArray[2] = 0;
+		Event Player.BuildingLocationsArray[2] = Ray Cast Hit Position(Eye Position(Event Player) + Normalize(Facing Direction Of(
+			Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0,
+			1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True) + Vector(0, 0.550, 0);
+		Create Effect(All Players(All Teams), Sphere, Team Of(Event Player), Event Player.BuildingLocationsArray[2], 0.550, Color);
+		Event Player.BuildingArray[2] = Last Created Entity;
+		"Set Lastconstruction to 2 (Dispenser)"
+		Event Player.LastConstruction = 2;
+		"Setup Progress Meter with 10s build time"
+		Event Player.DispenserCompletion = 0;
+		Chase Player Variable At Rate(Event Player, DispenserCompletion, 100, 4.762, None);
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[2], 6, Team Of(Event Player), Off), Custom String(
+			"{0}'s Lv{1} Dispenser", Event Player, Event Player.BuildingLevelArray[2]), Event Player.BuildingLocationsArray[2] + Vector(0,
+			0.300, 0), 1, Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.DispenserText[0] = Last Text ID;
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[2], 6, Team Of(Event Player), Off), Custom String(
+			"Building: {0}%", Event Player.DispenserCompletion), Event Player.BuildingLocationsArray[2] + Vector(0, 0.200, 0), 1,
+			Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.DispenserText[1] = Last Text ID;
+		"Setup HP"
+		Event Player.DispenserHP = 1;
+		Chase Player Variable At Rate(Event Player, DispenserHP, 100, 4.714, None);
+		Create Progress Bar HUD Text(Event Player, Event Player.DispenserHP, Custom String("Dispenser HP: {0}%  |  Metal: {1} / 400",
+			Round To Integer(Event Player.DispenserHP, Up), Event Player.DispenserMetal), Right, 0.200, Color(White), Color(White), Values,
+			Default Visibility);
+		Event Player.DispenserText[5] = Last Text ID;
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[2], 12, Team Of(Event Player), Off), Icon String(
+			Arrow: Down), Event Player.BuildingLocationsArray[2] + Vector(0, 0, 0), 1, Clip Against Surfaces,
+			Visible To Position and String, Color(White), Default Visibility);
+		Event Player.DispenserText[2] = Last Text ID;
+	}
+}
+
+rule("Initialize TP Entrance (Subroutine)")
+{
+	event
+	{
+		Subroutine;
+		InitializeTPEntrance;
+	}
+
+	actions
+	{
+		"If exit is not built"
+		If(Event Player.TPExitCompletion != 100);
+			"TP Level = 1"
+			Event Player.BuildingLevelArray[3] = 1;
+			"Set upgrade progress to 0"
+			Event Player.UpgradeProgressArray[3] = 0;
+		End;
+		Event Player.BuildingLocationsArray[3] = Ray Cast Hit Position(Eye Position(Event Player) + Normalize(Facing Direction Of(
+			Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0,
+			1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True) + Vector(0, 0.050, 0);
+		Event Player.TPColor = Color(Red);
+		Create Effect(All Players(All Teams), Ring, Event Player.TPColor, Event Player.BuildingLocationsArray[3], 0.550, Color);
+		Event Player.BuildingArray[3] = Last Created Entity;
+		"Set Lastconstruction to 3 (TPEntrance)"
+		Event Player.LastConstruction = 3;
+		"Setup Progress Meter with 10s build time"
+		Event Player.TPEntranceCompletion = 0;
+		Chase Player Variable At Rate(Event Player, TPEntranceCompletion, 100, 4.762, None);
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[3], 6, Team Of(Event Player), Off), Custom String(
+			"{0}'s Lv{1} Teleporter Entrance", Event Player, Event Player.BuildingLevelArray[3]),
+			Event Player.BuildingLocationsArray[3] + Vector(0, 0.300, 0), 1, Clip Against Surfaces, Visible To Position and String, Color(
+			White), Default Visibility);
+		Event Player.TPEntranceText[0] = Last Text ID;
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[3], 6, Team Of(Event Player), Off), Custom String(
+			"Building: {0}%", Event Player.TPEntranceCompletion), Event Player.BuildingLocationsArray[3] + Vector(0, 0.200, 0), 1,
+			Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.TPEntranceText[1] = Last Text ID;
+		"Setup HP"
+		Event Player.TPEntranceHP = 1;
+		Chase Player Variable At Rate(Event Player, TPEntranceHP, 100, 4.714, None);
+		Create Progress Bar HUD Text(Event Player, Event Player.TPEntranceHP, Custom String(
+			"Teleporter Entrance HP: {0}%  |  Charge: {1}%", Round To Integer(Event Player.TPEntranceHP, Up), Round To Integer(
+			Event Player.TeleporterCharge, Up)), Right, 0.200, Color(White), Color(White), Values, Default Visibility);
+		Event Player.TPEntranceText[5] = Last Text ID;
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[3], 12, Team Of(Event Player), Off), Icon String(
+			Arrow: Down), Event Player.BuildingLocationsArray[3] + Vector(0, 0, 0), 1, Clip Against Surfaces,
+			Visible To Position and String, Color(White), Default Visibility);
+		Event Player.TPEntranceText[3] = Last Text ID;
+	}
+}
+
+rule("Initialize TP Exit (Subroutine)")
+{
+	event
+	{
+		Subroutine;
+		InitializeTPExit;
+	}
+
+	actions
+	{
+		"If entrance is not built"
+		If(Event Player.TPEntranceCompletion != 100);
+			"TP Level = 1"
+			Event Player.BuildingLevelArray[3] = 1;
+			"Set upgrade progress to 0"
+			Event Player.UpgradeProgressArray[3] = 0;
+		End;
+		Event Player.BuildingLocationsArray[4] = Ray Cast Hit Position(Eye Position(Event Player) + Normalize(Facing Direction Of(
+			Event Player) * Vector(1, 0, 1)) * 2, Eye Position(Event Player) + Normalize(Facing Direction Of(Event Player) * Vector(1, 0,
+			1)) * 2 + Vector(0, -3, 0), All Players(All Teams), Event Player, True) + Vector(0, 0.050, 0);
+		Event Player.TPColor = Color(Red);
+		Create Effect(All Players(All Teams), Ring, Event Player.TPColor, Event Player.BuildingLocationsArray[4], 0.550, Color);
+		Event Player.BuildingArray[4] = Last Created Entity;
+		"Set Lastconstruction to 3 (TPExit)"
+		Event Player.LastConstruction = 3;
+		"Setup Progress Meter with 10s build time"
+		Event Player.TPExitCompletion = 0;
+		Chase Player Variable At Rate(Event Player, TPExitCompletion, 100, 4.762, None);
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[4], 6, Team Of(Event Player), Off), Custom String(
+			"{0}'s Lv{1} Teleporter Exit", Event Player, Event Player.BuildingLevelArray[3]),
+			Event Player.BuildingLocationsArray[4] + Vector(0, 0.300, 0), 1, Clip Against Surfaces, Visible To Position and String, Color(
+			White), Default Visibility);
+		Event Player.TPExitText[0] = Last Text ID;
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[4], 6, Team Of(Event Player), Off), Custom String(
+			"Building: {0}%", Event Player.TPExitCompletion), Event Player.BuildingLocationsArray[4] + Vector(0, 0.200, 0), 1,
+			Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.TPExitText[1] = Last Text ID;
+		"Setup HP"
+		Event Player.TPExitHP = 1;
+		Chase Player Variable At Rate(Event Player, TPExitHP, 100, 4.714, None);
+		Create Progress Bar HUD Text(Event Player, Event Player.TPExitHP, Custom String("Teleporter Exit HP: {0}%  |  Charge: {1}%",
+			Round To Integer(Event Player.TPExitHP, Up), Round To Integer(Event Player.TeleporterCharge, Up)), Right, 0.200, Color(White),
+			Color(White), Values, Default Visibility);
+		Event Player.TPExitText[5] = Last Text ID;
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[4], 12, Team Of(Event Player), Off), Icon String(
+			Arrow: Up), Event Player.BuildingLocationsArray[4] + Vector(0, 0, 0), 1, Clip Against Surfaces, Visible To Position and String,
+			Color(White), Default Visibility);
+		Event Player.TPExitText[3] = Last Text ID;
+		If(Event Player.BuildingRotation == Icon String(Arrow: Up));
+			Event Player.TPExitFacing = World Vector Of(Vector(0, 0, 1), Event Player, Rotation);
+		Else If(Event Player.BuildingRotation == Icon String(Arrow: Right));
+			Event Player.TPExitFacing = World Vector Of(Vector(-1, 0, 0), Event Player, Rotation);
+		Else If(Event Player.BuildingRotation == Icon String(Arrow: Down));
+			Event Player.TPExitFacing = World Vector Of(Vector(0, 0, -1), Event Player, Rotation);
+		Else If(Event Player.BuildingRotation == Icon String(Arrow: Left));
+			Event Player.TPExitFacing = World Vector Of(Vector(1, 0, 0), Event Player, Rotation);
+		End;
+	}
+}
+
+rule("Sentry - Melee to Speed Up Build / Heal / Upgrade")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		"Sentry Exists"
+		Event Player.BuildingLocationsArray[1] != 0;
+		"is in front of you"
+		Angle Between Vectors(Facing Direction Of(Event Player), Direction Towards(Eye Position(Event Player), Eye Position(
+			Event Player.Bot1))) <= 40;
+		"is close to you"
+		Distance Between(Position Of(Event Player), Eye Position(Players On Hero(Hero(Bastion), Team Of(Event Player)))) <= 4;
+		"Wrench equipped"
+		disabled Weapon(Event Player) == 2;
+		"You are swinging wrench"
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+	}
+
+	actions
+	{
+		"wait for wrench impact"
+		Wait(0.350, Ignore Condition);
+		If(Event Player.EngineerMetal == 0);
+			If(Event Player.SentryCompletion < 100);
+				Play Effect(Event Player, Doomfist Rising Uppercut Impact Sound, Color(White), Event Player, 100);
+				Event Player.SentryCompletion += 7.500;
+				Heal(Event Player.Bot1, Null, 11);
+				If(Event Player.SentryCompletion > 100);
+					Event Player.SentryCompletion = 100;
+				End;
+			Else;
+				Big Message(Event Player, Custom String("No metal!"));
+				Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 50);
+			End;
+		"If Engie has metal"
+		Else;
+			"If it needs healed"
+			If(Event Player.SentryCompletion == 100 && Normalized Health(Event Player.Bot1) != 1);
+				"Play sound"
+				Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				"If in needs healed by 100 or more"
+				If(Max Health(Event Player.Bot1) - Health(Event Player.Bot1) >= 100);
+					"If you have 33 metal, heal 100"
+					If(Event Player.EngineerMetal >= 33);
+						Event Player.EngineerMetal -= 33;
+						Heal(Event Player.Bot1, Event Player, 100);
+					"if not, heal as much as you can"
+					Else;
+						Heal(Event Player.Bot1, Event Player, Event Player.EngineerMetal * 3);
+						Event Player.EngineerMetal = 0;
+					End;
+				"if it doesn't need healed the full 100, check if you have enough metal for necessary heal"
+				Else If(Event Player.EngineerMetal < (Max Health(Event Player.Bot1) - Health(Event Player.Bot1)) / 3);
+					"if you don't have enough metal, heal metal*3"
+					Heal(Event Player.Bot1, Event Player, Event Player.EngineerMetal * 3);
+					Event Player.EngineerMetal = 0;
+				"if you have enough metal for full heal"
+				Else;
+					Event Player.EngineerMetal -= (Max Health(Event Player.Bot1) - Health(Event Player.Bot1)) / 3;
+					Heal(Event Player.Bot1, Event Player, 100);
+				End;
+			"If it doesn't need healed"
+			Else;
+				"If it's complete, try to upgrade"
+				If(Event Player.SentryCompletion == 100);
+					"If it's not already level 3"
+					If(Event Player.BuildingLevelArray[1] < 3);
+						"If you have enough metal, upgrade"
+						If(Event Player.EngineerMetal >= 25);
+							Play Effect(Event Player, Doomfist Rising Uppercut Impact Sound, Color(White), Event Player, 50);
+							Event Player.EngineerMetal -= 25;
+							Event Player.UpgradeProgressArray[1] += 25;
+							"If upgradeprogress = 200, advance 1 level and reset upgradeprogress to 0"
+							If(Event Player.UpgradeProgressArray[1] >= 200);
+								Event Player.BuildingLevelArray[1] += 1;
+								"If level is max, destroy upgrade progress in-world text"
+								If(Event Player.BuildingLevelArray[1] == 3);
+									Destroy In-World Text(Event Player.SentryText[1]);
+									Start Scaling Player(Event Player.Bot1, 1.200, False);
+									Add Health Pool To Player(Event Player.Bot1, Health, 36, True, False);
+									Heal(Event Player.Bot1, Null, 36);
+									"Added rockets, no longer need lv3 damage scaling"
+									disabled Set Damage Dealt(Event Player.Bot1, 232);
+								Else;
+									Add Health Pool To Player(Event Player.Bot1, Health, 30, True, False);
+									Start Scaling Player(Event Player.Bot1, 0.800, False);
+									Heal(Event Player.Bot1, Null, 30);
+									Set Damage Dealt(Event Player.Bot1, 166);
+								End;
+								Event Player.UpgradeProgressArray[1] = 0;
+							End;
+						"If you don't have enough metal, play sound and give HUD notice"
+						Else;
+							Big Message(All Players(All Teams), Custom String("Not enough metal!"));
+							Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 100);
+						End;
+					End;
+				"If it's incomplete, speed up build time"
+				Else;
+					Play Effect(Event Player, Doomfist Rising Uppercut Impact Sound, Color(White), Event Player, 50);
+					Event Player.SentryCompletion += 7.500;
+					Heal(Event Player.Bot1, Null, 11);
+					If(Event Player.SentryCompletion > 100);
+						Event Player.SentryCompletion = 100;
+					End;
+				End;
+			End;
+			Wait(0.485, Ignore Condition);
+			Loop If Condition Is True;
+	}
+}
+
+rule("Dispenser - Melee to Build > Heal > Upgrade")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		"Dispenser Exists"
+		Event Player.BuildingLocationsArray[2] != 0;
+		"Dispenser is in front of you"
+		Angle Between Vectors(Facing Direction Of(Event Player), Direction Towards(Eye Position(Event Player),
+			Event Player.BuildingLocationsArray[2])) <= 30;
+		"Dispenser is close to you"
+		Distance Between(Position Of(Event Player), Event Player.BuildingLocationsArray[2]) <= 2.100;
+		"Wrench equipped\r\n@Condition eventPlayer.getCurrentWeapon() == 2\r\nYou are swinging wrench"
+		Is Firing Primary(Event Player) == True;
+	}
+
+	actions
+	{
+		"Building incomplete, advance completion"
+		If(Event Player.DispenserCompletion < 100);
+			Event Player.DispenserCompletion += 5;
+			Event Player.DispenserHP += 5;
+			If(Event Player.DispenserCompletion > 100);
+				Event Player.DispenserCompletion = 100;
+			Else;
+				Play Effect(All Players(All Teams), Doomfist Rising Uppercut Impact Sound, Color(White), Event Player, 100);
+			End;
+		Else If(Event Player.EngineerMetal == 0);
+			Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 100);
+			Big Message(Event Player, Custom String("No metal!"));
+		"building is complete and not full HP"
+		Else If(Event Player.DispenserHP < 100);
+			"if missing HP is more than we can fix in single swing"
+			If(Event Player.DispenserHP < 34);
+				"if you have 33 metal to repair max (66)"
+				If(Event Player.EngineerMetal >= 33);
+					Event Player.EngineerMetal -= 33;
+					Event Player.DispenserHP += 66;
+					Play Effect(All Players(All Teams), Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				"if not enough metal for full repair"
+				Else;
+					Event Player.DispenserHP += Event Player.EngineerMetal * 2;
+					Event Player.EngineerMetal = 0;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				End;
+			"if missing HP is less than 66, if you have enough metal for full repair"
+			Else If(Event Player.EngineerMetal >= Event Player.DispenserHP / 2);
+				Event Player.EngineerMetal -= Event Player.DispenserHP / 2;
+				Event Player.DispenserHP = 100;
+				Play Effect(All Players(All Teams), Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			"if you don't have enough metal for full repair"
+			Else;
+				Event Player.DispenserHP += Event Player.EngineerMetal * 2;
+				Event Player.EngineerMetal = 0;
+				Play Effect(All Players(All Teams), Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			End;
+		"building is complete and full hp, try upgrading"
+		Else If(Event Player.BuildingLevelArray[2] < 3);
+			"If you have enough metal for 1 upgrade swing"
+			If(Event Player.EngineerMetal >= 25);
+				Event Player.EngineerMetal -= 25;
+				Event Player.UpgradeProgressArray[2] += 25;
+				"If this swing got upgrade to 200 / 200"
+				If(Event Player.UpgradeProgressArray[2] >= 200);
+					Event Player.BuildingLevelArray[2] += 1;
+					Play Effect(All Players(All Teams), Sombra Logo Sound, Color(White), Event Player.BuildingLocationsArray[2], 100);
+					"If this swing got level to max"
+					If(Event Player.BuildingLevelArray[2] == 3);
+						"destroy upgrade progress in-world text"
+						Destroy In-World Text(Event Player.DispenserText[2]);
+					End;
+					Event Player.UpgradeProgressArray[2] = 0;
+				"If this swing didn't fully upgrade"
+				Else;
+					"play the normal hit sound"
+					Play Effect(All Players(All Teams), Doomfist Rising Uppercut Impact Sound, Color(White), Event Player, 100);
+				End;
+			"not enough metal for full upgrade swing"
+			Else;
+				"Play sound and give HUD message"
+				Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 100);
+				Big Message(Event Player, Custom String("Not enough metal!"));
+			End;
+		"Building is full HP and level 3 (do nothing)"
+		Else;
+	}
+}
+
+rule("TPEntrance - Melee to Speed Up Build / Heal / Upgrade")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		"Exists"
+		Event Player.BuildingLocationsArray[3] != 0;
+		"is in front of you"
+		Angle Between Vectors(Facing Direction Of(Event Player), Direction Towards(Eye Position(Event Player),
+			Event Player.BuildingLocationsArray[3])) <= 30;
+		"is close to you"
+		Distance Between(Position Of(Event Player), Event Player.BuildingLocationsArray[3]) <= 2;
+		"Wrench equipped\r\n@Condition eventPlayer.getCurrentWeapon() == 2\r\nYou are swinging wrench"
+		Is Firing Primary(Event Player) == True;
+	}
+
+	actions
+	{
+		"Building incomplete, advance completion"
+		If(Event Player.TPEntranceCompletion < 100);
+			Event Player.TPEntranceCompletion += 5;
+			Event Player.TPEntranceHP += 5;
+			If(Event Player.TPEntranceCompletion > 100);
+				Event Player.TPEntranceCompletion = 100;
+			Else;
+				Play Effect(All Players(All Teams), Doomfist Rising Uppercut Impact Sound, Color(White), Event Player, 100);
+			End;
+		Else If(Event Player.EngineerMetal == 0);
+			Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 100);
+			Big Message(All Players(All Teams), Custom String("No metal!"));
+		"building is complete and not full HP"
+		Else If(Event Player.TPEntranceHP < 100);
+			"if missing HP is more than we can fix in single swing"
+			If(Event Player.TPEntranceHP < 34);
+				"if you have 33 metal to repair max (66)"
+				If(Event Player.EngineerMetal >= 33);
+					Event Player.EngineerMetal -= 33;
+					Event Player.TPEntranceHP += 66;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				"if not enough metal for full repair"
+				Else;
+					Event Player.TPEntranceHP += Event Player.EngineerMetal * 2;
+					Event Player.EngineerMetal = 0;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				End;
+			"if missing HP is less than 66, if you have enough metal for full repair"
+			Else If(Event Player.EngineerMetal >= Event Player.TPEntranceHP / 2);
+				Event Player.EngineerMetal -= Event Player.TPEntranceHP / 2;
+				Event Player.TPEntranceHP = 100;
+				Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			"if you don't have enough metal for full repair"
+			Else;
+				Event Player.TPEntranceHP += Event Player.EngineerMetal * 2;
+				Event Player.EngineerMetal = 0;
+				Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			End;
+			"if TPExit needs healing, heal it as well"
+			If(Event Player.TPExitHP < 100);
+				"if missing HP is more than we can fix in single swing"
+				If(Event Player.TPExitHP < 34);
+					"if you have 33 metal to repair max (66)"
+					If(Event Player.EngineerMetal >= 33);
+						Event Player.EngineerMetal -= 33;
+						Event Player.TPExitHP += 66;
+						Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+					"if not enough metal for full repair"
+					Else;
+						Event Player.TPExitHP += Event Player.EngineerMetal * 2;
+						Event Player.EngineerMetal = 0;
+						Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+					End;
+				"if missing HP is less than 66, if you have enough metal for full repair"
+				Else If(Event Player.EngineerMetal >= Event Player.TPExitHP / 2);
+					Event Player.EngineerMetal -= Event Player.TPExitHP / 2;
+					Event Player.TPExitHP = 100;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				"if you don't have enough metal for full repair"
+				Else;
+					Event Player.TPExitHP += Event Player.EngineerMetal * 2;
+					Event Player.EngineerMetal = 0;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				End;
+			End;
+		"If TPEntrance is full HP, check if TPExit needs healed"
+		Else If(Event Player.TPExitHP < 100);
+			"if missing HP is more than we can fix in single swing"
+			If(Event Player.TPExitHP < 34);
+				"if you have 33 metal to repair max (66)"
+				If(Event Player.EngineerMetal >= 33);
+					Event Player.EngineerMetal -= 33;
+					Event Player.TPExitHP += 66;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				"if not enough metal for full repair"
+				Else;
+					Event Player.TPExitHP += Event Player.EngineerMetal * 2;
+					Event Player.EngineerMetal = 0;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				End;
+			"if missing HP is less than 66, if you have enough metal for full repair"
+			Else If(Event Player.EngineerMetal >= Event Player.TPExitHP / 2);
+				Event Player.EngineerMetal -= Event Player.TPExitHP / 2;
+				Event Player.TPExitHP = 100;
+				Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			"if you don't have enough metal for full repair"
+			Else;
+				Event Player.TPExitHP += Event Player.EngineerMetal * 2;
+				Event Player.EngineerMetal = 0;
+				Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			End;
+		"building is complete and full hp, try upgrading"
+		Else If(Event Player.BuildingLevelArray[3] < 3);
+			"If you have enough metal for 1 upgrade swing"
+			If(Event Player.EngineerMetal >= 25);
+				Event Player.EngineerMetal -= 25;
+				Event Player.UpgradeProgressArray[3] += 25;
+				"If this swing got upgrade to 200 / 200"
+				If(Event Player.UpgradeProgressArray[3] >= 200);
+					Event Player.BuildingLevelArray[3] += 1;
+					Play Effect(All Players(All Teams), Sombra Logo Sound, Color(White), Event Player.BuildingLocationsArray[3], 100);
+					"If this swing got level to max"
+					If(Event Player.BuildingLevelArray[3] == 3);
+						Destroy In-World Text(Event Player.TPEntranceText[1]);
+						"if linked to exit, destroy upgrade text at exit as well"
+						If(Event Player.TPExitCompletion == 100);
+							"destroy upgrade progress in-world text"
+							Destroy In-World Text(Event Player.TPExitText[1]);
+						End;
+					End;
+					Event Player.UpgradeProgressArray[3] = 0;
+				"If this swing didn't fully upgrade"
+				Else;
+					"play the normal hit sound"
+					Play Effect(Event Player, Doomfist Rising Uppercut Impact Sound, Color(White), Event Player, 100);
+				End;
+			"not enough metal for full upgrade swing"
+			Else;
+				"Play sound and give HUD message"
+				Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 100);
+				Big Message(All Players(All Teams), Custom String("Not enough metal!"));
+			End;
+		"Building is full HP and level 3"
+		Else;
+			"Do nothing"
+			Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 50);
+	}
+}
+
+rule("TPExit - Melee to Speed Up Build / Heal / Upgrade")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		"Exists"
+		Event Player.BuildingLocationsArray[4] != 0;
+		"is in front of you"
+		Angle Between Vectors(Facing Direction Of(Event Player), Direction Towards(Eye Position(Event Player),
+			Event Player.BuildingLocationsArray[4])) <= 30;
+		"is close to you"
+		Distance Between(Position Of(Event Player), Event Player.BuildingLocationsArray[4]) <= 2;
+		"Wrench equipped"
+		Weapon(Event Player) == 2;
+		"You are swinging wrench"
+		Is Firing Primary(Event Player) == True;
+	}
+
+	actions
+	{
+		"Building incomplete, advance completion"
+		If(Event Player.TPExitCompletion < 100);
+			Event Player.TPExitCompletion += 5;
+			Event Player.TPExitHP += 5;
+			If(Event Player.TPExitCompletion > 100);
+				Event Player.TPExitCompletion = 100;
+			Else;
+				Play Effect(All Players(All Teams), Doomfist Rising Uppercut Impact Sound, Color(White), Event Player, 100);
+			End;
+		Else If(Event Player.EngineerMetal == 0);
+			Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 100);
+			Big Message(All Players(All Teams), Custom String("No metal!"));
+		"building is complete and not full HP"
+		Else If(Event Player.TPExitHP < 100);
+			"if missing HP is more than we can fix in single swing"
+			If(Event Player.TPExitHP < 34);
+				"if you have 33 metal to repair max (66)"
+				If(Event Player.EngineerMetal >= 33);
+					Event Player.EngineerMetal -= 33;
+					Event Player.TPExitHP += 66;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				"if not enough metal for full repair"
+				Else;
+					Event Player.TPExitHP += Event Player.EngineerMetal * 2;
+					Event Player.EngineerMetal = 0;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				End;
+			"if missing HP is less than 66, if you have enough metal for full repair"
+			Else If(Event Player.EngineerMetal >= Event Player.TPExitHP / 2);
+				Event Player.EngineerMetal -= Event Player.TPExitHP / 2;
+				Event Player.TPExitHP = 100;
+				Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			"if you don't have enough metal for full repair"
+			Else;
+				Event Player.TPExitHP += Event Player.EngineerMetal * 2;
+				Event Player.EngineerMetal = 0;
+				Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			End;
+			"if TPEntrance needs healing, heal it as well"
+			If(Event Player.TPEntranceHP < 100);
+				"if missing HP is more than we can fix in single swing"
+				If(Event Player.TPEntranceHP < 34);
+					"if you have 33 metal to repair max (66)"
+					If(Event Player.EngineerMetal >= 33);
+						Event Player.EngineerMetal -= 33;
+						Event Player.TPEntranceHP += 66;
+						Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+					"if not enough metal for full repair"
+					Else;
+						Event Player.TPEntranceHP += Event Player.EngineerMetal * 2;
+						Event Player.EngineerMetal = 0;
+						Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+					End;
+				"if missing HP is less than 66, if you have enough metal for full repair"
+				Else If(Event Player.EngineerMetal >= Event Player.TPEntranceHP / 2);
+					Event Player.EngineerMetal -= Event Player.TPEntranceHP / 2;
+					Event Player.TPEntranceHP = 100;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				"if you don't have enough metal for full repair"
+				Else;
+					Event Player.TPEntranceHP += Event Player.EngineerMetal * 2;
+					Event Player.EngineerMetal = 0;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				End;
+			End;
+		"If TPExit is full HP, check if TPEntrance needs healed"
+		Else If(Event Player.TPEntranceHP < 100);
+			"if missing HP is more than we can fix in single swing"
+			If(Event Player.TPEntranceHP < 34);
+				"if you have 33 metal to repair max (66)"
+				If(Event Player.EngineerMetal >= 33);
+					Event Player.EngineerMetal -= 33;
+					Event Player.TPEntranceHP += 66;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				"if not enough metal for full repair"
+				Else;
+					Event Player.TPEntranceHP += Event Player.EngineerMetal * 2;
+					Event Player.EngineerMetal = 0;
+					Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+				End;
+			"if missing HP is less than 66, if you have enough metal for full repair"
+			Else If(Event Player.EngineerMetal >= Event Player.TPEntranceHP / 2);
+				Event Player.EngineerMetal -= Event Player.TPEntranceHP / 2;
+				Event Player.TPEntranceHP = 100;
+				Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			"if you don't have enough metal for full repair"
+			Else;
+				Event Player.TPExitHP += Event Player.EngineerMetal * 2;
+				Event Player.EngineerMetal = 0;
+				Play Effect(Event Player, Brigitte Repair Pack Impact Sound, Color(White), Event Player, 100);
+			End;
+		"building is complete and full hp, try upgrading"
+		Else If(Event Player.BuildingLevelArray[3] < 3);
+			"If you have enough metal for 1 upgrade swing"
+			If(Event Player.EngineerMetal >= 25);
+				Event Player.EngineerMetal -= 25;
+				Event Player.UpgradeProgressArray[3] += 25;
+				"If this swing got upgrade to 200 / 200"
+				If(Event Player.UpgradeProgressArray[3] >= 200);
+					Event Player.BuildingLevelArray[3] += 1;
+					Play Effect(All Players(All Teams), Sombra Logo Sound, Color(White), Event Player.BuildingLocationsArray[3], 100);
+					"If this swing got level to max"
+					If(Event Player.BuildingLevelArray[3] == 3);
+						"destroy upgrade progress in-world text"
+						Destroy In-World Text(Event Player.TPExitText[1]);
+						"if linked to entrance, destroy upgrade text at entrance as well"
+						If(Event Player.TPEntranceCompletion == 100);
+							"destroy upgrade progress in-world text"
+							Destroy In-World Text(Event Player.TPEntranceText[1]);
+						End;
+					End;
+					Event Player.UpgradeProgressArray[3] = 0;
+				"If this swing didn't fully upgrade"
+				Else;
+					"play the normal hit sound"
+					Play Effect(Event Player, Doomfist Rising Uppercut Impact Sound, Color(White), Event Player, 100);
+				End;
+			"not enough metal for full upgrade swing"
+			Else;
+				"Play sound and give HUD message"
+				Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 100);
+				Big Message(All Players(All Teams), Custom String("Not enough metal!"));
+			End;
+		"Building is full HP and level 3"
+		Else;
+			"Do nothing"
+			Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 50);
+	}
+}
+
+rule("Finished Building - Sentry")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.SentryCompletion >= 100;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Sombra Logo Sound, Color(White), Event Player.BuildingLocationsArray[1], 100);
+		Clear Status(Players On Hero(Hero(Bastion), Team Of(Event Player)), Frozen);
+		Stop All Heal Over Time(Players On Hero(Hero(Bastion), Team Of(Event Player)));
+		Destroy In-World Text(Event Player.SentryText[1]);
+		Create In-World Text(Players Within Radius(Eye Position(Event Player.Bot1), 6, Team Of(Event Player), Off), Custom String(
+			"Upgrade: {0} / 200", Event Player.UpgradeProgressArray[1]), Event Player.BuildingLocationsArray[1] + Vector(0, -0.490, 0), 1,
+			Do Not Clip, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.SentryText[1] = Last Text ID;
+		If(Health(Event Player.Bot1) >= 140);
+			Heal(Event Player.Bot1, Null, 10);
+		End;
+		Destroy Progress Bar HUD Text(Event Player.SentryText[5]);
+		Create Progress Bar HUD Text(Event Player, Normalized Health(Event Player.Bot1) * 100, Custom String(
+			"Lv{1} Sentry HP: {0}  |  Kills: {2}", Round To Integer(Health(Players On Hero(Hero(Bastion), Team Of(Event Player))), Up),
+			Event Player.BuildingLevelArray[1], Number Of Final Blows(Event Player.Bot1)), Right, 0, Color(White), Color(White), Values,
+			Default Visibility);
+		Event Player.SentryText[5] = Last Text ID;
+	}
+}
+
+rule("Finished Building - Dispenser")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.DispenserCompletion == 100;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Sombra Logo Sound, Color(White), Event Player.BuildingLocationsArray[2], 100);
+		"Delete \"building\" text"
+		Destroy In-World Text(Event Player.DispenserText[1]);
+		Event Player.DispenserMetal = 25;
+		"Create HUD Dispenser Metal diplay"
+		disabled Create HUD Text(Event Player, Custom String("Dispenser Metal: {0} / 400", Round To Integer(Event Player.DispenserMetal, Up)), Null,
+			Null, Right, 2, Color(Green), Color(White), Color(White), Visible To and String, Default Visibility);
+		disabled Event Player.DispenserText[5] = Last Text ID;
+		"Create upgrade progress in-world text"
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[2], 6, Team Of(Event Player), Off), Custom String(
+			"Upgrade: {0} / 200", Event Player.UpgradeProgressArray[2]), Event Player.BuildingLocationsArray[2] + Vector(0, 0.200, 0), 1,
+			Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.DispenserText[2] = Last Text ID;
+		"Loop metal generation every 5s"
+		While(True);
+			Wait(5, Abort When False);
+			If(Event Player.DispenserMetal < 400);
+				Play Effect(All Players(All Teams), Tracer Recall Reappear Sound, Color(White), Event Player.BuildingLocationsArray[2], 100);
+				"Generate 40/50/60 metal every 5s for lv 1/2/3"
+				Event Player.DispenserMetal += 30 + 10 * Event Player.BuildingLevelArray[2];
+				"Caps at 400 metal"
+				If(Event Player.DispenserMetal > 400);
+					Event Player.DispenserMetal = 400;
+				End;
+			End;
+		End;
+	}
+}
+
+rule("Finished Building - TP Entrance")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.TPEntranceCompletion == 100;
+	}
+
+	actions
+	{
+		Destroy In-World Text(Event Player.TPEntranceText[1]);
+		If(Event Player.BuildingLevelArray[3] != 3);
+			Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[3], 6, Team Of(Event Player), Off), Custom String(
+				"Upgrade: {0} / 200", Event Player.UpgradeProgressArray[3]), Event Player.BuildingLocationsArray[3] + Vector(0, 0.200, 0), 1,
+				Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+			Event Player.TPEntranceText[1] = Last Text ID;
+		End;
+	}
+}
+
+rule("Finished Building - TP Exit")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.TPExitCompletion == 100;
+	}
+
+	actions
+	{
+		Destroy In-World Text(Event Player.TPExitText[1]);
+		If(Event Player.BuildingLevelArray[3] != 3);
+			Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[3], 6, Team Of(Event Player), Off), Custom String(
+				"Upgrade: {0} / 200", Event Player.UpgradeProgressArray[3]), Event Player.BuildingLocationsArray[4] + Vector(0, 0.200, 0), 1,
+				Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+			Event Player.TPExitText[1] = Last Text ID;
+		End;
+	}
+}
+
+rule("Teleporter - Both buildings finished building / TP upgrade complete")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.TPEntranceCompletion == 100;
+		Event Player.TPExitCompletion == 100;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Sombra Logo Sound, Color(White), Event Player.BuildingLocationsArray[3], 100);
+		Play Effect(All Players(All Teams), Sombra Logo Sound, Color(White), Event Player.BuildingLocationsArray[4], 100);
+		"Start charging teleporter"
+		Chase Player Variable At Rate(Event Player, TeleporterCharge, 100,
+			Event Player.BuildingLevelArray[3] == 3 ? 33.333 : Event Player.BuildingLevelArray[3] * 10, Destination and Rate);
+		"Teleport immediately available when built"
+		Event Player.TeleporterCharge = 100;
+		"Set ring color to green"
+		Event Player.TPColor = Color(Green);
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[3], 6, Team Of(Event Player), Off), Custom String(
+			"Charge: {0}%", Round To Integer(Event Player.TeleporterCharge, Down)), Event Player.BuildingLocationsArray[3] + Vector(0,
+			0.100, 0), 1, Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.TPEntranceText[2] = Last Text ID;
+		Create In-World Text(Players Within Radius(Event Player.BuildingLocationsArray[4], 6, Team Of(Event Player), Off), Custom String(
+			"Charge: {0}%", Round To Integer(Event Player.TeleporterCharge, Down)), Event Player.BuildingLocationsArray[4] + Vector(0,
+			0.100, 0), 1, Clip Against Surfaces, Visible To Position and String, Color(White), Default Visibility);
+		Event Player.TPExitText[2] = Last Text ID;
+	}
+}
+
+rule("Looking at sticky destroys it")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Junkrat;
+	}
+
+	conditions
+	{
+		Is True For Any(Event Player.StuckBombLocationsArray, Is In View Angle(Players In Slot(0, Opposite Team Of(Team Of(Event Player))),
+			Current Array Element, 2)) == True;
+		Is True For Any(Event Player.StuckBombLocationsArray, Is In View Angle(Players In Slot(1, Opposite Team Of(Team Of(Event Player))),
+			Current Array Element, 2)) == True;
+		Is True For Any(Event Player.StuckBombLocationsArray, Is In View Angle(Players In Slot(2, Opposite Team Of(Team Of(Event Player))),
+			Current Array Element, 2)) == True;
+		Is True For Any(Event Player.StuckBombLocationsArray, Is In View Angle(Players In Slot(3, Opposite Team Of(Team Of(Event Player))),
+			Current Array Element, 2)) == True;
+		Is True For Any(Event Player.StuckBombLocationsArray, Is In View Angle(Players In Slot(4, Opposite Team Of(Team Of(Event Player))),
+			Current Array Element, 2)) == True;
+	}
+
+	actions
+	{
+		For Player Variable(Event Player, Index, 0, Count Of(All Players(Opposite Team Of(Team Of(Event Player)))), 1);
+			If(Is True For Any(Event Player.StuckBombLocationsArray, Is In View Angle(Players In Slot(Event Player.Index, Opposite Team Of(
+				Team Of(Event Player))), Current Array Element, 2)));
+				Event Player.PlayerLookingAtSticky = Players In Slot(Event Player.Index, Opposite Team Of(Team Of(Event Player)));
+				Break;
+			End;
+		End;
+		Event Player.StickyBeingLookedAt = First Of(Sorted Array(Event Player.StuckBombLocationsArray, Angle Between Vectors(
+			Facing Direction Of(Event Player.PlayerLookingAtSticky), Direction Towards(Eye Position(Event Player.PlayerLookingAtSticky),
+			Current Array Element))));
+		Create Beam Effect(All Players(All Teams), Bad Beam, Eye Position(Event Player.PlayerLookingAtSticky),
+			Event Player.StickyBeingLookedAt, Color(Red), Position and Radius);
+		Event Player.AttackStickyBeam = Last Created Entity;
+		Wait(0.500, Abort When False);
+	}
+}
+
+rule("Initialize Level 3 Sentry (Soldier 76)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Event Player.BuildingLevelArray[1] == 3;
+	}
+
+	actions
+	{
+		Create Dummy Bot(Hero(Soldier: 76), Team Of(Event Player), -1, Event Player.Bot1, Facing Direction Of(Event Player.Bot1));
+		Event Player.Bot2 = Last Created Entity;
+		Start Forcing Dummy Bot Name(Event Player.Bot2, Custom String("{0}'s Sentry Rockets", Event Player));
+		Event Player.Bot2.Bot1 = Event Player.Bot1;
+		Event Player.Bot2.BotOwner = Event Player;
+		Event Player.Bot1.Bot2 = Last Created Entity;
+		Set Status(Event Player.Bot2, Null, Invincible, 9999);
+		Set Status(Event Player.Bot2, Null, Phased Out, 9999);
+		Set Invisible(Event Player.Bot2, All);
+		Disable Movement Collision With Players(Event Player.Bot2);
+		Teleport(Event Player.Bot2, Event Player.Bot1);
+		"Why not just use \"facing direciton of\" instead of ray cast?"
+		disabled Start Facing(Event Player.Bot2, Direction Towards(Eye Position(Event Player.Bot2), Ray Cast Hit Position(Eye Position(
+			Event Player.Bot1), Eye Position(Event Player.Bot1) + Facing Direction Of(Event Player.Bot1) * 100, All Players(All Teams),
+			All Players(Team Of(Event Player)), False)), 50000, To World, Direction and Turn Rate);
+		Event Player.Bot1.SentryRocketCooldown = 0;
+		Set Damage Dealt(Event Player.Bot2, 99);
+	}
+}
+
+rule("Dispenser Link logic / Heal AOE - clear burn after 1s")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Hero Of(Event Player) != Hero(Soldier: 76);
+		Hero Of(Event Player) != Hero(Bastion);
+		Distance Between(Event Player, Players On Hero(Hero(Torbjörn), Team Of(Event Player)).BuildingLocationsArray[2]) <= 5;
+		Players On Hero(Hero(Torbjörn), Team Of(Event Player)).DispenserCompletion == 100;
+	}
+
+	actions
+	{
+		Create Beam Effect(All Players(All Teams), Good Beam, Players On Hero(Hero(Torbjörn), Team Of(Event Player))
+			.BuildingLocationsArray[2], Event Player, Team Of(Event Player), None);
+		Event Player.DispenserBeamEffect = Last Created Entity;
+		Start Heal Over Time(Event Player, Players On Hero(Hero(Torbjörn), Team Of(Event Player)), 9999,
+			5 + 5 * Event Player.BuildingLevelArray[2]);
+		Event Player.DispenserHealOverTime = Last Heal Over Time ID;
+		"After 1 second of healing, clear any pyro burn"
+		Wait(1, Abort When False);
+		Clear Status(Event Player, Burning);
+	}
+}
+
+rule("Dispenser Unlink logic / Stop Heal AOE")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Hero Of(Event Player) != Hero(Soldier: 76);
+		Hero Of(Event Player) != Hero(Bastion);
+		disabled Distance Between(Event Player, Players On Hero(Hero(Torbjörn), Team Of(Event Player)).BuildingLocationsArray[2]) > 5;
+		disabled Players On Hero(Hero(Torbjörn), Team Of(Event Player)).DispenserCompletion == 100;
+		(Distance Between(Event Player, Players On Hero(Hero(Torbjörn), Team Of(Event Player)).BuildingLocationsArray[2])
+			> 5 || Players On Hero(Hero(Torbjörn), Team Of(Event Player)).BuildingLocationsArray[2] == Null) == True;
+	}
+
+	actions
+	{
+		Stop Heal Over Time(Event Player.DispenserHealOverTime);
+		Destroy Effect(Event Player.DispenserBeamEffect);
+		Event Player.DispenserBeamEffect = Null;
+		Event Player.DispenserHealOverTime = Null;
+	}
+}
+
+disabled rule("Map Metal Spawns")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Game In Progress == True;
+	}
+
+	actions
+	{
+		If(Current Map == Map(Hanamura) || Current Map == Map(Hanamura Winter));
+			Global.AmmoSpawnLocations[0] = Vector(-0.002, 0, -96.469) + Vector(0, -0.750, 0);
+			Global.AmmoBoxColor[0] = Color(Blue);
+			Create Effect(All Players(All Teams), Orb, Global.AmmoBoxColor[0], Global.AmmoSpawnLocations[0], 0.500, None);
+			Global.AmmoSpawnEffects[0] = Last Created Entity;
+			Global.AmmoSpawnLocations[0] = Vector(-14.341, 2, -62.659) + Vector(0, -0.750, 0);
+			Global.AmmoBoxColor[0] = Color(Green);
+			Create Effect(All Players(All Teams), Orb, Global.AmmoBoxColor[0], Global.AmmoSpawnLocations[0], 0.500, None);
+			Global.AmmoSpawnEffects[0] = Last Created Entity;
+			Global.AmmoSpawnLocations[0] = Vector(0.753, -4.100, -75.328) + Vector(0, -0.750, 0);
+			Global.AmmoBoxColor[0] = Color(Gray);
+			Create Effect(All Players(All Teams), Orb, Global.AmmoBoxColor[0], Global.AmmoSpawnLocations[0], 0.500, None);
+			Global.AmmoSpawnEffects[0] = Last Created Entity;
+		Else;
+	}
+}
+
+disabled rule("Pick up map metal when close")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Torbjörn;
+	}
+
+	conditions
+	{
+		Is True For Any(Global.AmmoSpawnLocations, Distance Between(Event Player, Current Array Element) <= 1) == True;
+		Event Player.EngineerMetal < 200;
+	}
+
+	actions
+	{
+		Global.CurrentIndex = Index Of Array Value(Global.AmmoSpawnLocations, Filtered Array(Global.AmmoSpawnLocations, Distance Between(
+			Event Player, Current Array Element) <= 1));
+		"If ammo is still respawning"
+		If(Global.AmmoSpawnEffects[Global.CurrentIndex] == Null);
+			"Wait until it spawns"
+			Wait Until(Global.AmmoSpawnEffects[Global.CurrentIndex] != Null, 100);
+			"Then make sure player is still standing on ammo spawn"
+			Abort If Condition Is False;
+		End;
+		Destroy Effect(Global.AmmoSpawnEffects[Global.CurrentIndex]);
+		Global.AmmoSpawnEffects[Global.CurrentIndex] = Null;
+		If(Event Player.EngineerMetal >= 100);
+			Event Player.EngineerMetal = 200;
+		Else;
+			Event Player.EngineerMetal += 100;
+		End;
+		Play Effect(Event Player, Brigitte Repair Pack Armor Sound, Color(White), Event Player, 100);
+		Wait(10, Ignore Condition);
+		Create Effect(All Players(All Teams), Orb, Color(Gray), Global.AmmoSpawnLocations[0], 1, None);
+		Global.AmmoSpawnEffects[0] = Last Created Entity;
+	}
+}
+
+rule("Clear burn if healing off payload for 1s")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		"If gamemode is escort or hybrid (game modes with payload)"
+		(Current Game Mode == Game Mode(Escort) || Current Game Mode == Game Mode(Hybrid)) == True;
+		Is On Objective(Event Player) == True;
+		Payload Progress Percentage != 0;
+	}
+
+	actions
+	{
+		Wait(1, Ignore Condition);
+		Clear Status(Event Player, Burning);
+	}
+}
+
+rule("Double capture speed (spawn dummy bot on objective while capturing)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reaper;
+	}
+
+	conditions
+	{
+		Is On Objective(Event Player) == True;
+	}
+
+	actions
+	{
+		"If escort, dummy on payload"
+		If(Current Game Mode == Game Mode(Escort));
+			Create Dummy Bot(Hero(Ana), Team Of(Event Player), -1, Payload Position, Vector(0, 0, 0));
+		"If hybrid, dummy on payload if payload progress > 0%"
+		Else If(Current Game Mode == Game Mode(Hybrid));
+			If(Payload Progress Percentage > 0);
+				Create Dummy Bot(Hero(Ana), Team Of(Event Player), -1, Payload Position, Vector(0, 0, 0));
+			Else;
+				Create Dummy Bot(Hero(Ana), Team Of(Event Player), -1, Objective Position(Objective Index), Vector(0, 0, 0));
+			End;
+		"Any other game mode, dummy on point"
+		Else;
+			Create Dummy Bot(Hero(Ana), Team Of(Event Player), -1, Objective Position(Objective Index), Vector(0, 0, 0));
+		End;
+		Event Player.Bot1 = Last Created Entity;
+		Set Invisible(Event Player.Bot1, All);
+		Disable Movement Collision With Players(Event Player.Bot1);
+		Wait Until(!Is On Objective(Event Player), 99999);
+		Destroy Dummy Bot(Team Of(Event Player), Slot Of(Event Player.Bot1));
+	}
+}
+
+rule("F to toggle third person while cloaked/disguised")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Cassidy;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+		(Event Player.Invisible != 0 || Event Player.Disguised) == True;
+	}
+
+	actions
+	{
+		If(Event Player.ThirdPersonEnabled);
+			Stop Camera(Event Player);
+			Event Player.ThirdPersonEnabled = False;
+			If(Event Player.Invisible == 0);
+				Set Invisible(Event Player.Bot1, Enemies);
+			End;
+		Else;
+			Start Camera(Event Player, Eye Position(Event Player) + World Vector Of(Vector(1, 0, -1.500), Event Player, Rotation),
+				Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player) * 1000,
+				All Players(All Teams), Event Player, True), 22);
+			Event Player.ThirdPersonEnabled = True;
+			If(Event Player.Invisible == 0);
+				Set Invisible(Event Player.Bot1, None);
+			End;
+		End;
+	}
+}
