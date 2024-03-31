@@ -7,6 +7,6 @@ Create a new custom game.
 
 Navigate to Overwatch workshop rules.
 
-Click the paste button.
+Click the paste button. You should see all the new rules appear.
 
 Fire up the server.
